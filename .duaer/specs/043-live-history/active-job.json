@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "feature": "043-live-history",
+  "featureDirectory": ".duaer/specs/043-live-history",
+  "specDir": ".duaer/specs/043-live-history",
+  "branch": "feat/live-history",
+  "worktree": ".worktree/feat-live-history",
+  "startedAt": "2026-09-16T07:41:00.000Z",
+  "updatedAt": "2026-09-16T07:41:00.000Z",
+  "source": "duaer-do",
+  "status": "active"
+}

@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "feature": "040-terminal-queue-wait",
+  "featureDirectory": ".duaer/specs/040-terminal-queue-wait",
+  "specDir": ".duaer/specs/040-terminal-queue-wait",
+  "branch": "feat/terminal-queue-wait",
+  "worktree": ".worktree/feat-terminal-queue-wait",
+  "startedAt": "2026-09-16T05:40:00.000Z",
+  "updatedAt": "2026-09-16T05:46:00.000Z",
+  "source": "duaer-do",
+  "status": "accepted"
+}

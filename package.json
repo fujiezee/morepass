@@ -1,0 +1,55 @@
+{
+  "name": "morepass",
+  "version": "0.1.0",
+  "description": "MorePass — a small, modern tween library",
+  "type": "module",
+  "main": "./dist/morepass.cjs",
+  "module": "./dist/morepass.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/morepass.js",
+      "require": "./dist/morepass.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p tsconfig.build.json && vite build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "preview": "vite preview",
+    "duaer": "duaer-spec",
+    "duaer:update": "duaer-spec update"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zhuifeng2316-cmyk/morepass.git"
+  },
+  "bugs": {
+    "url": "https://github.com/zhuifeng2316-cmyk/morepass/issues"
+  },
+  "homepage": "https://github.com/zhuifeng2316-cmyk/morepass#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "morepass",
+    "animation",
+    "tween",
+    "motion"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "duaer-spec": "^0.15.0",
+    "jsdom": "^26.1.0",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5",
+    "vite-plugin-dts": "^4.5.4",
+    "vitest": "^3.1.4"
+  }
+}

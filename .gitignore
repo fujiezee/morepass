@@ -1,0 +1,7 @@
+node_modules
+dist
+.DS_Store
+*.local
+coverage
+# duaer-spec: mandatory request worktrees (do not commit)
+.worktree/
