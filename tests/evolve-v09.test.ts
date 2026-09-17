@@ -29,6 +29,25 @@ describe("evolve v0.9", () => {
     el.remove();
   });
 
+  it("animates clipPath inset(... round Npx) preserving round keyword", () => {
+    const el = document.createElement("div");
+    el.style.clipPath = "inset(0% 0% 0% 0%)";
+    document.body.appendChild(el);
+    const tw = to(el, {
+      clipPath: "inset(12% 18% 12% 18% round 16px)",
+      duration: 1,
+      ease: "none",
+      paused: true,
+    });
+    tw.seek(0);
+    expect(el.style.clipPath).toBe("inset(0% 0% 0% 0% round 0px)");
+    tw.seek(0.5);
+    expect(el.style.clipPath).toBe("inset(6% 9% 6% 9% round 8px)");
+    tw.seek(1);
+    expect(el.style.clipPath).toBe("inset(12% 18% 12% 18% round 16px)");
+    el.remove();
+  });
+
   it("animates clipPath circle(...) preserving template", () => {
     const el = document.createElement("div");
     el.style.clipPath = "circle(10% at 50% 50%)";

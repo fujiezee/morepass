@@ -1,0 +1,7 @@
+{
+  "status": "accepted",
+  "verification": {
+    "commands": ["npm test", "npm run build", "puppeteer click-through of v0.7–v0.9 demos"],
+    "notes": "clipPath round aligned; demo teardown hardened; 88 unit tests pass"
+  }
+}

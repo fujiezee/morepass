@@ -2,6 +2,7 @@ import MorePass, {
   context,
   delayedCall,
   getById,
+  killTweensOf,
   matchMedia,
   quickTo,
   type TweenControls,
@@ -63,6 +64,15 @@ let setQuickX: ((v: number) => TweenControls) | null = null;
 let setQuickY: ((v: number) => TweenControls) | null = null;
 let demoCtx: ReturnType<typeof context> | null = null;
 let introDone = false;
+/** Bumps on each runDemo so orphan RAF loops (totalProgress) stop. */
+let demoEpoch = 0;
+/** delayedCall handles not stored in `current` (getById / invalidate helpers). */
+const orphanTweens: TweenControls[] = [];
+
+function trackOrphan(tw: TweenControls): TweenControls {
+  orphanTweens.push(tw);
+  return tw;
+}
 
 function status(text: string) {
   statusEl.textContent = text;
@@ -100,12 +110,28 @@ function onQuickMove(e: PointerEvent) {
 }
 
 function killAll() {
+  demoEpoch += 1;
   current?.kill();
   current = null;
   scrubTween?.kill();
   scrubTween = null;
   kfTween?.kill();
   kfTween = null;
+  for (const tw of orphanTweens) tw.kill();
+  orphanTweens.length = 0;
+  // Secondary delayed overwrite/interrupt tweens are not stored in `current`.
+  killTweensOf([
+    box,
+    box2,
+    onceBox,
+    scrubBox,
+    kfBox,
+    mmBox,
+    delayBox,
+    cssCard,
+    quickDot,
+    ...dots,
+  ]);
   mm?.kill();
   mm = null;
   setQuickX = null;
@@ -637,6 +663,7 @@ MorePass.to(box, { x: "-=80", duration: 0.45, delay: 0.15 })`);
       show(`MorePass.to(box, { x: 360, duration: 1.2, id: "hero" })
 // later:
 MorePass.getById("hero")?.pause()`);
+      const epoch = demoEpoch;
       current = MorePass.to(box, {
         x: 360,
         rotation: 20,
@@ -644,10 +671,13 @@ MorePass.getById("hero")?.pause()`);
         ease: "none",
         id: "hero",
       });
-      delayedCall(0.55, () => {
-        getById("hero")?.pause();
-        status("getById('hero') · paused mid-flight");
-      });
+      trackOrphan(
+        delayedCall(0.55, () => {
+          if (epoch !== demoEpoch) return;
+          getById("hero")?.pause();
+          status("getById('hero') · paused mid-flight");
+        }),
+      );
       status("getById · playing as id hero");
     },
 
@@ -687,6 +717,7 @@ MorePass.getById("hero")?.pause()`);
 await tw
 // also resolves if kill()`);
       status("then · awaiting…");
+      const epoch = demoEpoch;
       current = MorePass.to(box, {
         x: 300,
         scale: 1.08,
@@ -694,6 +725,7 @@ await tw
         ease: "power2.out",
       });
       void current.then(() => {
+        if (epoch !== demoEpoch) return;
         status("then · resolved on complete");
       });
     },
@@ -707,17 +739,21 @@ await tw
 // move box, then:
 tw.invalidate().play()`);
       MorePass.set(box, { x: 40 });
+      const epoch = demoEpoch;
       current = MorePass.to(box, {
         x: () => 200 + Math.random() * 160,
         duration: 1,
         ease: "power2.out",
         paused: true,
       });
-      delayedCall(0.35, () => {
-        MorePass.set(box, { x: 120 });
-        current?.invalidate().play();
-        status("invalidate · rebuilt from x=120");
-      });
+      trackOrphan(
+        delayedCall(0.35, () => {
+          if (epoch !== demoEpoch) return;
+          MorePass.set(box, { x: 120 });
+          current?.invalidate().play();
+          status("invalidate · rebuilt from x=120");
+        }),
+      );
       status("invalidate · will rebuild mid-flight");
       current.play();
     },
@@ -795,11 +831,15 @@ tw.invalidate().play()`);
   onInterrupt: () => console.log("interrupted"),
 })
 MorePass.to(box, { x: 80, duration: 0.6, delay: 0.35, overwrite: true })`);
+      const epoch = demoEpoch;
       current = MorePass.to(box, {
         x: 420,
         duration: 2,
         ease: "none",
-        onInterrupt: () => status("interrupt · onInterrupt fired"),
+        onInterrupt: () => {
+          if (epoch !== demoEpoch) return;
+          status("interrupt · onInterrupt fired");
+        },
       });
       MorePass.to(box, {
         x: 80,
@@ -817,6 +857,7 @@ MorePass.to(box, { x: 80, duration: 0.6, delay: 0.35, overwrite: true })`);
   x: 400, duration: 0.5, repeat: 3, ease: "none", paused: true,
 })
 tw.totalProgress(0.5) // mid of full run incl. repeats`);
+      const epoch = demoEpoch;
       current = MorePass.to(box, {
         x: 400,
         duration: 0.5,
@@ -824,13 +865,15 @@ tw.totalProgress(0.5) // mid of full run incl. repeats`);
         repeat: 3,
         paused: true,
       });
-      current.totalProgress(0);
+      const tw = current;
+      tw.totalProgress(0);
       let step = 0;
       const tick = () => {
+        if (epoch !== demoEpoch || current !== tw) return;
         step = Math.min(1, step + 0.04);
-        current?.totalProgress(step);
+        tw.totalProgress(step);
         status(
-          `totalProgress · ${(current?.totalProgress() as number).toFixed(2)} / totalDuration ${current?.totalDuration}`,
+          `totalProgress · ${(tw.totalProgress() as number).toFixed(2)} / totalDuration ${tw.totalDuration}`,
         );
         if (step < 1) requestAnimationFrame(tick);
       };
@@ -845,13 +888,13 @@ tw.totalProgress(0.5) // mid of full run incl. repeats`);
 })`);
       box.style.clipPath = "inset(0% 0% 0% 0%)";
       current = MorePass.to(box, {
-        clipPath: "inset(12% 18% 12% 18%)",
+        clipPath: "inset(12% 18% 12% 18% round 16px)",
         duration: 1,
         ease: "power2.inOut",
         yoyo: true,
         repeat: 1,
       });
-      status("clipPath · inset(…) numbers");
+      status("clipPath · inset(… round 16px)");
     },
 
     axis() {
@@ -891,12 +934,19 @@ tw.totalProgress(0.5) // mid of full run incl. repeats`);
   onOverwrite: () => console.log("props claimed"),
 })
 MorePass.to(box, { x: 60, duration: 0.5, delay: 0.35 })`);
+      const epoch = demoEpoch;
       current = MorePass.to(box, {
         x: 400,
         duration: 2,
         ease: "none",
-        onOverwrite: () => status("onOverwrite · props claimed"),
-        onInterrupt: () => status("onInterrupt · full kill"),
+        onOverwrite: () => {
+          if (epoch !== demoEpoch) return;
+          status("onOverwrite · props claimed");
+        },
+        onInterrupt: () => {
+          if (epoch !== demoEpoch) return;
+          status("onInterrupt · full kill");
+        },
       });
       MorePass.to(box, {
         x: 60,
