@@ -1,6 +1,6 @@
 import { createScrollTrigger } from "./scroll-trigger";
 import type { ScrollTriggerVars } from "./scroll-types";
-import { mapFunctionValues, resolveStaggerDelay } from "./stagger";
+import { mapFunctionValues, buildStaggerDelays } from "./stagger";
 import { timeline } from "./timeline";
 import {
   createTweenHandle,
@@ -200,8 +200,9 @@ function createStaggered(
   const { onComplete: _oc, onStart: _os, onUpdate: _ou, ...childBase } =
     cleanTo;
 
+  const delays = buildStaggerDelays(targets.length, stagger);
   for (let i = 0; i < targets.length; i++) {
-    const start = baseDelay + resolveStaggerDelay(i, targets.length, stagger);
+    const start = baseDelay + (delays[i] ?? 0);
     const itemTo = mapFunctionValues(
       { ...childBase, delay: 0 },
       i,

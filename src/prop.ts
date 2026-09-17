@@ -17,6 +17,8 @@ export interface TransformBag {
   x: number;
   y: number;
   z: number;
+  xPercent: number;
+  yPercent: number;
   scaleX: number;
   scaleY: number;
   rotation: number;
@@ -30,6 +32,8 @@ const TRANSFORM_PROPS = new Set([
   "x",
   "y",
   "z",
+  "xPercent",
+  "yPercent",
   "scale",
   "scaleX",
   "scaleY",
@@ -62,6 +66,8 @@ export function defaultTransform(): TransformBag {
     x: 0,
     y: 0,
     z: 0,
+    xPercent: 0,
+    yPercent: 0,
     scaleX: 1,
     scaleY: 1,
     rotation: 0,
@@ -83,6 +89,7 @@ export function getTransformBag(target: object): TransformBag {
 }
 
 const VALUE_RE = /^([+-]?\d*\.?\d+)([a-z%]*)$/i;
+const REL_RE = /^(?:\+=|-=|\*=)([+-]?\d*\.?\d+)([a-z%]*)$/i;
 
 export function parseNumeric(
   value: unknown,
@@ -93,9 +100,35 @@ export function parseNumeric(
   }
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
+  if (REL_RE.test(trimmed)) return null;
   const match = VALUE_RE.exec(trimmed);
   if (!match) return null;
   return { num: parseFloat(match[1]), unit: match[2] || fallbackUnit };
+}
+
+export type RelativeOp = "+=" | "-=" | "*=";
+
+export function parseRelative(
+  value: unknown,
+): { op: RelativeOp; num: number; unit: string } | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  const m = /^(?:\+=|-=|\*=)/.exec(trimmed);
+  if (!m) return null;
+  const op = m[0] as RelativeOp;
+  const rest = trimmed.slice(op.length);
+  const match = VALUE_RE.exec(rest);
+  if (!match) return null;
+  return { op, num: parseFloat(match[1]), unit: match[2] || "" };
+}
+
+export function applyRelative(
+  start: number,
+  rel: { op: RelativeOp; num: number },
+): number {
+  if (rel.op === "+=") return start + rel.num;
+  if (rel.op === "-=") return start - rel.num;
+  return start * rel.num;
 }
 
 export function readStyleNumber(
@@ -145,6 +178,9 @@ export function readObjectNumber(target: object, key: string): number {
 
 export function composeTransform(bag: TransformBag): string {
   const parts: string[] = [];
+  if (bag.xPercent || bag.yPercent) {
+    parts.push(`translate(${bag.xPercent}%, ${bag.yPercent}%)`);
+  }
   if (bag.x || bag.y || bag.z) {
     parts.push(`translate3d(${bag.x}px, ${bag.y}px, ${bag.z}px)`);
   }
@@ -194,5 +230,5 @@ export function readAttrNumber(el: Element, key: string): number {
   const raw = el.getAttribute(key);
   if (raw == null || raw === "") return 0;
   const parsed = parseNumeric(raw);
-    return parsed?.num ?? (Number(raw) || 0);
-  }
+  return parsed?.num ?? (Number(raw) || 0);
+}

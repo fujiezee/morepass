@@ -4,6 +4,7 @@ import { defaults } from "./defaults";
 import { delayedCall } from "./delayed-call";
 import { ease } from "./ease";
 import { getProperty } from "./get-property";
+import { getById } from "./ids";
 import { isTweening, killTweensOf } from "./kill";
 import { matchMedia } from "./match-media";
 import { quickTo } from "./quick-to";
@@ -59,6 +60,7 @@ export const MorePass = {
   defaults,
   delayedCall,
   getProperty,
+  getById,
   killTweensOf,
   isTweening,
   utils,
@@ -78,6 +80,7 @@ export {
   defaults,
   delayedCall,
   getProperty,
+  getById,
   killTweensOf,
   isTweening,
   utils,

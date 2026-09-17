@@ -1,5 +1,5 @@
 import { collectIntoContext } from "./context";
-import { mapFunctionValues, resolveStaggerDelay } from "./stagger";
+import { mapFunctionValues, buildStaggerDelays } from "./stagger";
 import { ticker } from "./ticker";
 import {
   createTweenHandle,
@@ -151,9 +151,9 @@ export class Timeline implements TimelineControls {
       ? (({ stagger: _s, delay: _d, ...f }) => f)(fromVars)
       : null;
 
+    const delays = buildStaggerDelays(targets.length, stagger!);
     for (let i = 0; i < targets.length; i++) {
-      const start =
-        base + resolveStaggerDelay(i, targets.length, stagger!);
+      const start = base + (delays[i] ?? 0);
       const itemTo = mapFunctionValues(
         { ...rest, delay: 0 },
         i,

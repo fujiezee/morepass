@@ -31,7 +31,14 @@ export type EaseName =
 
 export type Target = object | Element | string;
 
-export type StaggerFrom = "start" | "end" | "center" | "edges" | number;
+export type StaggerFrom =
+  | "start"
+  | "end"
+  | "center"
+  | "edges"
+  | "random"
+  | number;
+
 
 export type StaggerVars = {
   /** Delay between consecutive items (default when stagger is a number). */
@@ -64,6 +71,10 @@ export type Vars = Record<string, unknown> & {
   clearProps?: string | boolean;
   /** Animate element attributes (SVG / HTML). */
   attr?: Record<string, unknown>;
+  /** CSS transform-origin (set at start, not interpolated). */
+  transformOrigin?: string;
+  /** Lookup via MorePass.getById(id). */
+  id?: string;
   onStart?: () => void;
   onUpdate?: () => void;
   onComplete?: () => void;

@@ -1,6 +1,7 @@
 import MorePass, {
   context,
   delayedCall,
+  getById,
   matchMedia,
   quickTo,
   type TweenControls,
@@ -574,6 +575,62 @@ pad.onpointermove = (e) => {
         },
       });
       status("attr · SVG circle r");
+    },
+
+    relative() {
+      showPanel("panel-tween");
+      show(`MorePass.to(box, { x: "+=220", rotation: "+=90", duration: 0.7 })
+MorePass.to(box, { x: "-=80", duration: 0.45, delay: 0.15 })`);
+      current = MorePass.to(box, {
+        x: "+=220",
+        rotation: "+=90",
+        duration: 0.7,
+        ease: "power2.out",
+      });
+      MorePass.to(box, {
+        x: "-=80",
+        duration: 0.45,
+        ease: "power2.out",
+        delay: 0.2,
+      });
+      status("relative · += / -=");
+    },
+
+    percent() {
+      showPanel("panel-tween");
+      show(`MorePass.to(box, {
+  xPercent: 120, yPercent: -40,
+  transformOrigin: "0% 50%",
+  rotation: 12, duration: 0.8,
+})`);
+      current = MorePass.to(box, {
+        xPercent: 120,
+        yPercent: -40,
+        transformOrigin: "0% 50%",
+        rotation: 12,
+        duration: 0.85,
+        ease: "power2.out",
+      });
+      status("percent · xPercent / yPercent + origin");
+    },
+
+    getById() {
+      showPanel("panel-tween");
+      show(`MorePass.to(box, { x: 360, duration: 1.2, id: "hero" })
+// later:
+MorePass.getById("hero")?.pause()`);
+      current = MorePass.to(box, {
+        x: 360,
+        rotation: 20,
+        duration: 1.4,
+        ease: "none",
+        id: "hero",
+      });
+      delayedCall(0.55, () => {
+        getById("hero")?.pause();
+        status("getById('hero') · paused mid-flight");
+      });
+      status("getById · playing as id hero");
     },
 
     matchMedia() {

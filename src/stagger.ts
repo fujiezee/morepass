@@ -27,6 +27,7 @@ export function staggerRank(
     const center = (total - 1) / 2;
     return center - Math.abs(index - center);
   }
+  if (from === "random") return index; // unused — see buildStaggerDelays
   if (typeof from === "number") return Math.abs(index - from);
   return index;
 }
@@ -36,24 +37,44 @@ export function resolveStaggerDelay(
   total: number,
   stagger: number | StaggerVars,
 ): number {
-  if (total <= 1) return 0;
-  const cfg = normalizeStagger(stagger);
-  const rank = staggerRank(index, total, cfg.from);
+  return buildStaggerDelays(total, stagger)[index] ?? 0;
+}
 
-  if (cfg.amount != null) {
-    const maxRank =
-      cfg.from === "center" || cfg.from === "edges" || typeof cfg.from === "number"
-        ? Math.max(
-            ...Array.from({ length: total }, (_, i) =>
-              staggerRank(i, total, cfg.from),
-            ),
-          )
-        : total - 1;
-    if (maxRank <= 0) return 0;
-    return (rank / maxRank) * cfg.amount;
+/** Build all delays once (required for `from: "random"`). */
+export function buildStaggerDelays(
+  total: number,
+  stagger: number | StaggerVars,
+): number[] {
+  if (total <= 1) return [0];
+  const cfg = normalizeStagger(stagger);
+
+  let ranks: number[];
+  if (cfg.from === "random") {
+    const order = Array.from({ length: total }, (_, i) => i);
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = order[i]!;
+      order[i] = order[j]!;
+      order[j] = tmp;
+    }
+    ranks = new Array(total);
+    order.forEach((orig, rank) => {
+      ranks[orig] = rank;
+    });
+  } else {
+    ranks = Array.from({ length: total }, (_, i) =>
+      staggerRank(i, total, cfg.from),
+    );
   }
 
-  return rank * (cfg.each ?? 0);
+  if (cfg.amount != null) {
+    const maxRank = Math.max(...ranks, 0);
+    if (maxRank <= 0) return ranks.map(() => 0);
+    return ranks.map((rank) => (rank / maxRank) * cfg.amount!);
+  }
+
+  const each = cfg.each ?? 0;
+  return ranks.map((rank) => rank * each);
 }
 
 export function mapFunctionValues(

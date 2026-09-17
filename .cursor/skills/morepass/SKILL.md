@@ -2,8 +2,9 @@
 name: morepass
 description: >-
   Animate DOM or plain objects with MorePass: to/from/fromTo, timeline, stagger,
-  keyframes, quickTo, context, delayedCall, killTweensOf, getProperty, autoAlpha,
-  timeScale, clearProps, attr, CSS variables, scrollTrigger, matchMedia, utils.
+  keyframes, quickTo, context, delayedCall, killTweensOf, getById, getProperty,
+  autoAlpha, timeScale, clearProps, attr, CSS variables, relative values,
+  xPercent/yPercent, transformOrigin, scrollTrigger, matchMedia, utils.
   Use when writing or refactoring motion code, or when the user mentions MorePass,
   tween, scrub, pin, or scroll-linked animation.
 ---
@@ -36,6 +37,10 @@ Targets: CSS selector string, `Element`, plain object, or arrays of those.
 | Instant set | `MorePass.set(target, vars)` |
 | Sequence / overlap | `MorePass.timeline()` |
 | Multi-step one call | `keyframes: [...]` or `"0%"/ "50%"/ "100%"` |
+| Relative end (`+=` `-=` `*=`) | `x: "+=40"` |
+| Percent translate | `xPercent` / `yPercent` |
+| Pivot | `transformOrigin: "50% 50%"` |
+| Find by id | `id: "hero"` → `MorePass.getById("hero")` |
 | Pointer / scrub retarget | `MorePass.quickTo(el, "x")` |
 | Scoped create + cleanup | `MorePass.context(() => { ... })` then `ctx.revert()` |
 | Wait then run | `MorePass.delayedCall(0.4, fn)` |
@@ -66,10 +71,12 @@ Targets: CSS selector string, `Element`, plain object, or arrays of those.
   paused: false,          // drive with progress/seek
   timeScale: 1,
   overwrite: "auto",      // "auto" | true | false
-  stagger: 0.1,           // or { each, amount, from }
+  stagger: { each: 0.08, from: "center" }, // start|end|center|edges|random|index
   keyframes: [/* … */],
   scrollTrigger: { /* … */ },
   attr: { /* svg attrs */ },
+  transformOrigin: "50% 0%",
+  id: "hero",
   clearProps: "opacity,x", // or "all" / true
   onStart() {},
   onUpdate() {},
@@ -91,6 +98,12 @@ MorePass.to(".box", {
   duration: 1,
   ease: "power2.out",
 })
+
+// relative / percent
+MorePass.to(".box", { x: "+=80", xPercent: -50, duration: 0.5 })
+MorePass.to(".box", { rotation: 90, transformOrigin: "0% 50%", duration: 0.6 })
+MorePass.to(".box", { x: 200, id: "slide" })
+MorePass.getById("slide")?.pause()
 ```
 
 ### Timeline positions
@@ -112,7 +125,7 @@ Position tokens: absolute seconds, `"+=0.2"`, `"-=0.2"`, `"<"`, `">"`, `"<0.1"`,
 ```ts
 MorePass.to(".dot", {
   y: -30, opacity: 1, duration: 0.4, ease: "back.out",
-  stagger: { each: 0.08, from: "center" }, // start|end|center|edges|index
+  stagger: { each: 0.08, from: "center" }, // start|end|center|edges|random|index
 })
 ```
 

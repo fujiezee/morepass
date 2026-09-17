@@ -2,7 +2,7 @@
 
 A small, modern tween library — built so **AI agents learn it in one Skill**, and humans ship motion without fighting the stack.
 
-**v0.5.0** · TypeScript · timeline · keyframes · quickTo · context · delayedCall · clearProps · attr · CSS vars · killTweensOf · getProperty · autoAlpha · timeScale · stagger · scrollTrigger · matchMedia · utils
+**v0.6.0** · TypeScript · relative values · xPercent/yPercent · transformOrigin · getById · timeline · keyframes · quickTo · context · delayedCall · clearProps · attr · CSS vars · killTweensOf · getProperty · autoAlpha · timeScale · stagger · scrollTrigger · matchMedia · utils
 
 ```bash
 npm install morepass
@@ -41,7 +41,10 @@ MorePass.timeline()
 
 | API | Notes |
 |---|---|
-| `to` / `from` / `fromTo` / `set` | Core tweens |
+| `to` / `from` / `fromTo` / `set` | Core tweens · relative `"+=40"` |
+| `xPercent` / `yPercent` | Percent of element size |
+| `transformOrigin` | Pivot for rotation / scale |
+| `id` / `getById` | Named tween lookup |
 | `timeline()` | Sequencing, labels, `+=` / `-=` / `<` / `>` |
 | `keyframes` | Array or `"0%"` / `"50%"` / `"100%"` maps |
 | `quickTo` | Fast property retarget (pointer follow) |
@@ -56,7 +59,7 @@ MorePass.timeline()
 | `timeScale` / `repeatDelay` / `onRepeat` | Playback control |
 | `defaults` | Global tween defaults |
 | `paused` + `progress` / `seek` | Scrub UIs without nested scroll |
-| `stagger` | `0.1` or `{ each, amount, from }` + function values |
+| `stagger` | `0.1` or `{ each, amount, from }` · `from: "random"` |
 | `scrollTrigger` | scrub, once, pin, toggleActions, custom scroller |
 | `matchMedia()` | responsive animation contexts |
 | `utils` | clamp, mapRange, interpolate, snap, random, wrap, distribute |

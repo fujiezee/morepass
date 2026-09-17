@@ -11,6 +11,7 @@ import { mergeDefaults } from "./defaults";
 import { resolveEase } from "./ease";
 import { claimProps, releaseProps, type PropOwner } from "./overwrite";
 import {
+  applyRelative,
   applyTransformProp,
   composeTransform,
   cssPropName,
@@ -18,6 +19,7 @@ import {
   getTransformBag,
   isTransformProp,
   parseNumeric,
+  parseRelative,
   readAttrNumber,
   readObjectNumber,
   readStyleNumber,
@@ -25,6 +27,7 @@ import {
   type ParsedProp,
   type TransformBag,
 } from "./prop";
+import { registerId, unregisterId } from "./ids";
 import { registerTween, unregisterTween } from "./registry";
 import { ticker } from "./ticker";
 import type {
@@ -55,6 +58,8 @@ const SPECIAL = new Set([
   "timeScale",
   "clearProps",
   "attr",
+  "transformOrigin",
+  "id",
 ]);
 
 type ResolvedTarget = object | Element;
@@ -203,61 +208,101 @@ function buildProps(
     let unit = "";
 
     if (mode === "fromTo" && fromRaw !== undefined) {
-      const endParsed = parseNumeric(
-        endRaw,
-        unitFor(readKey, ""),
-      ) ?? { num: 0, unit: "" };
       const startParsed = parseNumeric(
         fromRaw,
-        unitFor(readKey, endParsed.unit),
-      ) ?? { num: 0, unit: endParsed.unit };
-      startNum = startParsed.num;
-      endNum = endParsed.num;
-      unit = unitFor(readKey, endParsed.unit || startParsed.unit);
-    } else if (mode === "from") {
-      const startParsed = parseNumeric(
-        endRaw,
         unitFor(readKey, ""),
-      ) ?? { num: 0, unit: "" };
-      unit = unitFor(readKey, startParsed.unit);
+      ) ?? { num: typeof fromRaw === "number" ? fromRaw : 0, unit: "" };
       startNum = startParsed.num;
-      if (isElement && kind !== "object") {
-        if (kind === "transform") {
-          endNum =
-            key === "scale" || key === "scaleX" || key === "scaleY" ? 1 : 0;
-        } else if (kind === "attr") {
-          endNum = readAttrNumber(target as Element, key);
-        } else {
-          endNum = readStyleNumber(target as Element, readKey).num;
-        }
+      unit = unitFor(readKey, startParsed.unit);
+      const rel = parseRelative(endRaw);
+      if (rel) {
+        endNum = applyRelative(startNum, rel);
+        if (rel.unit) unit = unitFor(readKey, rel.unit);
       } else {
-        endNum = readObjectNumber(target as object, readKey);
+        const endParsed = parseNumeric(
+          endRaw,
+          unit,
+        ) ?? { num: Number(endRaw) || 0, unit: "" };
+        endNum = endParsed.num;
+        unit = unitFor(readKey, endParsed.unit || unit);
+      }
+    } else if (mode === "from") {
+      const rel = parseRelative(endRaw);
+      if (rel) {
+        // from relative: start = current ± delta
+        if (isElement && kind === "transform") {
+          const bag = getTransformBag(target);
+          const current =
+            key === "scale"
+              ? bag.scaleX
+              : ((bag as unknown as Record<string, number>)[key] ?? 0);
+          startNum = applyRelative(current, rel);
+          endNum = current;
+        } else if (isElement && kind === "attr") {
+          endNum = readAttrNumber(target as Element, key);
+          startNum = applyRelative(endNum, rel);
+        } else if (isElement && kind === "style") {
+          endNum = readStyleNumber(target as Element, readKey).num;
+          startNum = applyRelative(endNum, rel);
+        } else {
+          endNum = readObjectNumber(target as object, readKey);
+          startNum = applyRelative(endNum, rel);
+        }
+        unit = unitFor(readKey, rel.unit);
+      } else {
+        const startParsed = parseNumeric(
+          endRaw,
+          unitFor(readKey, ""),
+        ) ?? { num: 0, unit: "" };
+        unit = unitFor(readKey, startParsed.unit);
+        startNum = startParsed.num;
+        if (isElement && kind !== "object") {
+          if (kind === "transform") {
+            endNum =
+              key === "scale" || key === "scaleX" || key === "scaleY" ? 1 : 0;
+          } else if (kind === "attr") {
+            endNum = readAttrNumber(target as Element, key);
+          } else {
+            endNum = readStyleNumber(target as Element, readKey).num;
+          }
+        } else {
+          endNum = readObjectNumber(target as object, readKey);
+        }
       }
     } else {
-      const endParsed = parseNumeric(
-        endRaw,
-        unitFor(readKey, ""),
-      ) ?? { num: Number(endRaw) || 0, unit: "" };
-      unit = unitFor(readKey, endParsed.unit);
-      endNum = endParsed.num;
-
       if (fromRaw !== undefined) {
         startNum =
-          parseNumeric(fromRaw, unit)?.num ??
+          parseNumeric(fromRaw, unitFor(readKey, ""))?.num ??
           (typeof fromRaw === "number" ? fromRaw : 0);
+        unit = unitFor(
+          readKey,
+          parseNumeric(fromRaw, "")?.unit ?? "",
+        );
       } else if (isElement && kind === "style") {
         const current = readStyleNumber(target as Element, readKey);
         startNum = current.num;
-        if (!unit) unit = current.unit;
+        unit = current.unit;
       } else if (isElement && kind === "attr") {
         startNum = readAttrNumber(target as Element, key);
       } else if (kind === "transform") {
-        // Prefer live bag values so chained tweens start from current pose
         const bag = getTransformBag(target);
         if (key === "scale") startNum = bag.scaleX;
         else startNum = (bag as unknown as Record<string, number>)[key] ?? 0;
       } else {
         startNum = readObjectNumber(target as object, readKey);
+      }
+
+      const rel = parseRelative(endRaw);
+      if (rel) {
+        endNum = applyRelative(startNum, rel);
+        unit = unitFor(readKey, rel.unit || unit);
+      } else {
+        const endParsed = parseNumeric(
+          endRaw,
+          unitFor(readKey, unit),
+        ) ?? { num: Number(endRaw) || 0, unit: "" };
+        endNum = endParsed.num;
+        unit = unitFor(readKey, endParsed.unit || unit);
       }
     }
 
@@ -349,6 +394,8 @@ class Tween implements TweenHandle {
   private readonly onComplete?: () => void;
   private readonly onRepeat?: () => void;
   private readonly clearProps: string | boolean | undefined;
+  private readonly transformOrigin?: string;
+  private readonly tweenId?: string;
 
   private startWall = 0;
   private pauseWall = 0;
@@ -381,7 +428,13 @@ class Tween implements TweenHandle {
     this.onComplete = vars.onComplete;
     this.onRepeat = vars.onRepeat;
     this.clearProps = vars.clearProps;
+    this.transformOrigin =
+      typeof vars.transformOrigin === "string"
+        ? vars.transformOrigin
+        : undefined;
+    this.tweenId = typeof vars.id === "string" ? vars.id : undefined;
     this.register();
+    if (this.tweenId) registerId(this.tweenId, this);
   }
 
   get duration() {
@@ -497,6 +550,7 @@ class Tween implements TweenHandle {
   kill() {
     this.releaseClaims();
     this.unregister();
+    if (this.tweenId) unregisterId(this.tweenId, this);
     this.state = "killed";
     this.clearTicker();
     this.targets.length = 0;
@@ -559,6 +613,7 @@ class Tween implements TweenHandle {
 
     if (!this.startedCallback) {
       this.startedCallback = true;
+      this.applyTransformOrigin();
       this.claim();
       this.onStart?.();
     }
@@ -669,6 +724,15 @@ class Tween implements TweenHandle {
       this.onComplete?.();
     }
     this.clearTicker();
+  }
+
+  private applyTransformOrigin() {
+    if (!this.transformOrigin) return;
+    for (const runtime of this.targets) {
+      if (!runtime.isElement) continue;
+      (runtime.target as HTMLElement).style.transformOrigin =
+        this.transformOrigin;
+    }
   }
 
   private applyClearProps() {
