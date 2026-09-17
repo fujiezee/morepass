@@ -10,7 +10,36 @@ export function normalizeStagger(
     each: stagger.each ?? 0,
     amount: stagger.amount,
     from: stagger.from ?? "start",
+    grid: stagger.grid,
   };
+}
+
+function resolveGrid(
+  total: number,
+  grid: [number, number] | [number] | undefined,
+): { cols: number; rows: number } | null {
+  if (!grid) return null;
+  const cols = Math.max(1, Math.floor(grid[0] ?? 1));
+  const rows =
+    grid.length === 2
+      ? Math.max(1, Math.floor(grid[1]!))
+      : Math.max(1, Math.ceil(total / cols));
+  return { cols, rows };
+}
+
+function gridCoords(index: number, cols: number): { col: number; row: number } {
+  return { col: index % cols, row: Math.floor(index / cols) };
+}
+
+function dist2(
+  aCol: number,
+  aRow: number,
+  bCol: number,
+  bRow: number,
+): number {
+  const dc = aCol - bCol;
+  const dr = aRow - bRow;
+  return Math.sqrt(dc * dc + dr * dr);
 }
 
 /** Distance-from-origin index used to compute stagger delay. */
@@ -18,8 +47,37 @@ export function staggerRank(
   index: number,
   total: number,
   from: StaggerFrom = "start",
+  grid?: [number, number] | [number],
 ): number {
   if (total <= 1) return 0;
+
+  const layout = resolveGrid(total, grid);
+  if (layout) {
+    const { cols, rows } = layout;
+    const { col, row } = gridCoords(index, cols);
+
+    if (from === "end") {
+      return dist2(col, row, cols - 1, rows - 1);
+    }
+    if (from === "center") {
+      return dist2(col, row, (cols - 1) / 2, (rows - 1) / 2);
+    }
+    if (from === "edges") {
+      const toCenter = dist2(col, row, (cols - 1) / 2, (rows - 1) / 2);
+      const maxCorner = dist2(0, 0, (cols - 1) / 2, (rows - 1) / 2);
+      return maxCorner - toCenter;
+    }
+    if (from === "random") return index; // unused — see buildStaggerDelays
+    if (typeof from === "number") {
+      const origin = gridCoords(
+        Math.max(0, Math.min(total - 1, Math.floor(from))),
+        cols,
+      );
+      return dist2(col, row, origin.col, origin.row);
+    }
+    // start
+    return dist2(col, row, 0, 0);
+  }
 
   if (from === "end") return total - 1 - index;
   if (from === "center") return Math.abs(index - (total - 1) / 2);
@@ -63,7 +121,7 @@ export function buildStaggerDelays(
     });
   } else {
     ranks = Array.from({ length: total }, (_, i) =>
-      staggerRank(i, total, cfg.from),
+      staggerRank(i, total, cfg.from, cfg.grid),
     );
   }
 

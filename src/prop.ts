@@ -234,3 +234,39 @@ export function readAttrNumber(el: Element, key: string): number {
   const parsed = parseNumeric(raw);
   return parsed?.num ?? (Number(raw) || 0);
 }
+
+const BLUR_RE = /blur\(\s*([+-]?\d*\.?\d+)(px)?\s*\)/i;
+
+/** Read blur radius (px) from an element's CSS filter. */
+export function readBlur(el: Element): number {
+  if (!(el instanceof HTMLElement) && !(el instanceof SVGElement)) return 0;
+  const inline = (el as HTMLElement).style.filter || "";
+  const computed =
+    inline ||
+    (typeof getComputedStyle !== "undefined"
+      ? getComputedStyle(el).filter
+      : "");
+  if (!computed || computed === "none") return 0;
+  const m = BLUR_RE.exec(computed);
+  return m ? parseFloat(m[1]) : 0;
+}
+
+/**
+ * Write blur(Npx) into filter, preserving any other filter functions.
+ * Replaces an existing blur(...) segment when present.
+ */
+export function writeBlur(el: Element, px: number): void {
+  if (!(el instanceof HTMLElement) && !(el instanceof SVGElement)) return;
+  const style = (el as HTMLElement).style;
+  const current = style.filter || "";
+  const blurPart = `blur(${px}px)`;
+  if (!current || current === "none") {
+    style.filter = blurPart;
+    return;
+  }
+  if (BLUR_RE.test(current)) {
+    style.filter = current.replace(BLUR_RE, blurPart);
+    return;
+  }
+  style.filter = `${current} ${blurPart}`.trim();
+}

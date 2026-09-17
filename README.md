@@ -2,7 +2,7 @@
 
 A small, modern tween library — built so **AI agents learn it in one Skill**, and humans ship motion without fighting the stack.
 
-**v0.7.0** · TypeScript · function ends · snap · then/invalidate · skewX/skewY · relative values · xPercent/yPercent · transformOrigin · getById · timeline · keyframes · quickTo · context · delayedCall · clearProps · attr · CSS vars · killTweensOf · getProperty · autoAlpha · timeScale · stagger · scrollTrigger · matchMedia · utils
+**v0.8.0** · TypeScript · blur · stagger.grid · repeatRefresh · onInterrupt · totalProgress · function ends · snap · then/invalidate · skewX/skewY · relative values · xPercent/yPercent · transformOrigin · getById · timeline · keyframes · quickTo · context · delayedCall · clearProps · attr · CSS vars · killTweensOf · getProperty · autoAlpha · timeScale · stagger · scrollTrigger · matchMedia · utils
 
 ```bash
 npm install morepass
@@ -56,6 +56,7 @@ MorePass.timeline()
 | `killTweensOf` / `isTweening` | Kill or query by target |
 | `getProperty` | Read current transform / style / object value |
 | `autoAlpha` | Opacity + visibility |
+| `blur` | CSS `filter: blur(Npx)` (preserves other filters) |
 | `timeScale` / `repeatDelay` / `onRepeat` | Playback control |
 | `defaults` | Global tween defaults |
 | `paused` + `progress` / `seek` | Scrub UIs without nested scroll |

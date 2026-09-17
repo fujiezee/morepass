@@ -1,6 +1,6 @@
 {
   "name": "morepass",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "MorePass — modern TypeScript tween engine. AI-learnable. Timeline, scrub, scroll, context.",
   "type": "module",
   "main": "./dist/morepass.cjs",

@@ -126,6 +126,7 @@ function resetVisuals() {
   box2.style.cssText =
     "position:absolute;top:40%;left:40px;width:72px;height:72px;opacity:0.3;background:linear-gradient(145deg,#ffc857,#9a6d16);";
   MorePass.set(box, { x: 0, y: 0, scale: 1, rotation: 0, opacity: 1, xPercent: 0, yPercent: 0, skewX: 0, skewY: 0 });
+  box.style.filter = "";
   MorePass.set(box2, { x: 0, y: 0, scale: 0.6, rotation: 0, opacity: 0.3, skewX: 0, skewY: 0 });
 
   onceBox.style.cssText =
@@ -735,6 +736,105 @@ tw.invalidate().play()`);
         ease: "power2.out",
       });
       status("skew · skewX / skewY");
+    },
+
+    blur() {
+      showPanel("panel-tween");
+      show(`MorePass.to(box, {
+  blur: 14, x: 280, duration: 0.9,
+})`);
+      box.style.filter = "";
+      current = MorePass.to(box, {
+        blur: 14,
+        x: 280,
+        duration: 0.9,
+        ease: "power2.out",
+      });
+      status("blur · filter blur(Npx)");
+    },
+
+    grid() {
+      showPanel("panel-stagger");
+      show(`MorePass.to(".dot", {
+  y: -36, opacity: 1,
+  stagger: { each: 0.06, from: "center", grid: [3, 2] },
+})`);
+      current = MorePass.to(dots, {
+        y: -36,
+        scale: 1.25,
+        opacity: 1,
+        duration: 0.4,
+        ease: "back.out",
+        stagger: { each: 0.06, from: "center", grid: [3, 2] },
+      });
+      status("grid · stagger 3×2 from center");
+    },
+
+    repeatRefresh() {
+      showPanel("panel-tween");
+      show(`MorePass.to(box, {
+  x: () => 160 + Math.random() * 220,
+  duration: 0.55, repeat: 3, yoyo: true,
+  repeatRefresh: true,
+})`);
+      current = MorePass.to(box, {
+        x: () => 160 + Math.random() * 220,
+        duration: 0.55,
+        ease: "power2.inOut",
+        repeat: 3,
+        yoyo: true,
+        repeatRefresh: true,
+      });
+      status("repeatRefresh · new end each cycle");
+    },
+
+    interrupt() {
+      showPanel("panel-tween");
+      show(`MorePass.to(box, {
+  x: 420, duration: 2,
+  onInterrupt: () => console.log("interrupted"),
+})
+MorePass.to(box, { x: 80, duration: 0.6, delay: 0.35, overwrite: true })`);
+      current = MorePass.to(box, {
+        x: 420,
+        duration: 2,
+        ease: "none",
+        onInterrupt: () => status("interrupt · onInterrupt fired"),
+      });
+      MorePass.to(box, {
+        x: 80,
+        duration: 0.6,
+        ease: "power2.out",
+        delay: 0.35,
+        overwrite: true,
+      });
+      status("interrupt · waiting for overwrite…");
+    },
+
+    totalProgress() {
+      showPanel("panel-tween");
+      show(`const tw = MorePass.to(box, {
+  x: 400, duration: 0.5, repeat: 3, ease: "none", paused: true,
+})
+tw.totalProgress(0.5) // mid of full run incl. repeats`);
+      current = MorePass.to(box, {
+        x: 400,
+        duration: 0.5,
+        ease: "none",
+        repeat: 3,
+        paused: true,
+      });
+      current.totalProgress(0);
+      let step = 0;
+      const tick = () => {
+        step = Math.min(1, step + 0.04);
+        current?.totalProgress(step);
+        status(
+          `totalProgress · ${(current?.totalProgress() as number).toFixed(2)} / totalDuration ${current?.totalDuration}`,
+        );
+        if (step < 1) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
     },
 
     matchMedia() {

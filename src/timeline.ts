@@ -78,6 +78,10 @@ export class Timeline implements TimelineControls {
     return this.total;
   }
 
+  get totalDuration() {
+    return this.total;
+  }
+
   get time() {
     return this.elapsed;
   }
@@ -234,6 +238,11 @@ export class Timeline implements TimelineControls {
         progress: (v?: number) => {
           if (v === undefined) return nested.progress() as number;
           nested.progress(v);
+          return proxy;
+        },
+        totalProgress: (v?: number) => {
+          if (v === undefined) return nested.totalProgress() as number;
+          nested.totalProgress(v);
           return proxy;
         },
         timeScale: (v?: number) => {
@@ -418,6 +427,10 @@ export class Timeline implements TimelineControls {
     if (value === undefined) return this.ratio;
     this.seek(value * (this.total || 1));
     return this;
+  }
+
+  totalProgress(value?: number) {
+    return this.progress(value);
   }
 
   timeScale(value?: number) {

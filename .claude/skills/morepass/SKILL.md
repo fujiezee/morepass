@@ -3,9 +3,10 @@ name: morepass
 description: >-
   Animate DOM or plain objects with MorePass: to/from/fromTo, timeline, stagger,
   keyframes, quickTo, context, delayedCall, killTweensOf, getById, getProperty,
-  autoAlpha, timeScale, clearProps, attr, CSS variables, relative values,
-  function end values, snap, then/invalidate, skewX/skewY, xPercent/yPercent,
-  transformOrigin, scrollTrigger, matchMedia, utils.
+  autoAlpha, blur, timeScale, clearProps, attr, CSS variables, relative values,
+  function end values, snap, then/invalidate, repeatRefresh, onInterrupt,
+  totalProgress, skewX/skewY, xPercent/yPercent, transformOrigin, scrollTrigger,
+  matchMedia, utils, stagger.grid.
   Use when writing or refactoring motion code, or when the user mentions MorePass,
   tween, scrub, pin, or scroll-linked animation.
 ---
@@ -43,6 +44,10 @@ Targets: CSS selector string, `Element`, plain object, or arrays of those.
 | Snap after interpolate | `snap: { x: 10 }` or `{ x: [0, 50, 100] }` |
 | Await complete / kill | `await tw` / `tw.then(...)` |
 | Rebuild start/end | `tw.invalidate()` |
+| Refresh each repeat | `repeatRefresh: true` |
+| Kill / overwrite callback | `onInterrupt` (once; not on complete) |
+| Full-run progress | `tw.totalProgress()` / `tw.totalDuration` |
+| Blur filter | `blur: 12` → `filter: blur(12px)` |
 | Skew | `skewX` / `skewY` |
 | Percent translate | `xPercent` / `yPercent` |
 | Pivot | `transformOrigin: "50% 50%"` |
@@ -67,17 +72,18 @@ Targets: CSS selector string, `Element`, plain object, or arrays of those.
 ```ts
 {
   // animatable: x, y, scale, scaleX, scaleY, rotation, skewX, skewY, opacity,
-  // autoAlpha, width, height, backgroundColor, color, borderRadius, …
+  // autoAlpha, blur, width, height, backgroundColor, color, borderRadius, …
   duration: 0.5,          // seconds (default 0.5)
   delay: 0,
   ease: "power2.out",     // see Eases below
   repeat: 0,              // -1 = infinite
   repeatDelay: 0,
+  repeatRefresh: false,   // rebuild start/end before each repeat cycle
   yoyo: false,
   paused: false,          // drive with progress/seek
   timeScale: 1,
   overwrite: "auto",      // "auto" | true | false
-  stagger: { each: 0.08, from: "center" }, // start|end|center|edges|random|index
+  stagger: { each: 0.08, from: "center", grid: [3, 2] }, // start|end|center|edges|random|index
   keyframes: [/* … */],
   scrollTrigger: { /* … */ },
   attr: { /* svg attrs */ },
@@ -89,10 +95,11 @@ Targets: CSS selector string, `Element`, plain object, or arrays of those.
   onUpdate() {},
   onComplete() {},
   onRepeat() {},
+  onInterrupt() {},       // kill / overwrite only (once)
 }
 ```
 
-Controls (every tween/timeline): `play pause reverse restart kill seek progress timeScale isActive invalidate` + `then` (PromiseLike) + `duration` / `time`.
+Controls (every tween/timeline): `play pause reverse restart kill seek progress totalProgress timeScale isActive invalidate` + `then` (PromiseLike) + `duration` / `totalDuration` / `time`.
 
 ## Recipes
 
@@ -118,9 +125,19 @@ MorePass.to(".box", {
   snap: { x: 20 },
   duration: 0.8,
 })
-const tw = MorePass.to(".box", { skewX: 12, duration: 0.5 })
+const tw = MorePass.to(".box", { skewX: 12, blur: 8, duration: 0.5 })
 await tw
 tw.invalidate() // rebuild start/end from current state
+
+// repeats that re-sample function ends
+MorePass.to(".box", {
+  x: () => Math.random() * 400,
+  duration: 0.4,
+  repeat: 3,
+  repeatRefresh: true,
+  onInterrupt: () => {},
+})
+tw.totalProgress(0.5) // across totalDuration (incl. repeats)
 ```
 
 ### Timeline positions
@@ -144,6 +161,12 @@ Position tokens: absolute seconds, `"+=0.2"`, `"-=0.2"`, `"<"`, `">"`, `"<0.1"`,
 MorePass.to(".dot", {
   y: -30, opacity: 1, duration: 0.4, ease: "back.out",
   stagger: { each: 0.08, from: "center" }, // start|end|center|edges|random|index
+})
+
+// 2D grid ranks
+MorePass.to(".cell", {
+  scale: 1.1, duration: 0.35,
+  stagger: { each: 0.05, from: "center", grid: [4, 3] }, // or grid: [4]
 })
 ```
 

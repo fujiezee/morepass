@@ -21,9 +21,11 @@ import {
   parseNumeric,
   parseRelative,
   readAttrNumber,
+  readBlur,
   readObjectNumber,
   readStyleNumber,
   unitFor,
+  writeBlur,
   type ParsedProp,
   type TransformBag,
 } from "./prop";
@@ -52,6 +54,7 @@ const SPECIAL = new Set([
   "onUpdate",
   "onComplete",
   "onRepeat",
+  "onInterrupt",
   "stagger",
   "scrollTrigger",
   "keyframes",
@@ -62,6 +65,7 @@ const SPECIAL = new Set([
   "transformOrigin",
   "id",
   "snap",
+  "repeatRefresh",
 ]);
 
 type ResolvedTarget = object | Element;
@@ -166,6 +170,7 @@ function buildProps(
         : undefined;
     const propSnap = snapMap?.[key];
     const isAutoAlpha = key === "autoAlpha";
+    const isBlur = key === "blur";
     const isCssVar = key.startsWith("--");
     const readKey = isAutoAlpha ? "opacity" : key;
     const kind =
@@ -186,6 +191,7 @@ function buildProps(
       kind !== "transform" &&
       kind !== "attr" &&
       !isAutoAlpha &&
+      !isBlur &&
       !isCssVar &&
       (looksLikeColor(endRaw, key) ||
         (fromRaw !== undefined && looksLikeColor(fromRaw, key)));
@@ -240,21 +246,21 @@ function buildProps(
     if (mode === "fromTo" && fromRaw !== undefined) {
       const startParsed = parseNumeric(
         fromRaw,
-        unitFor(readKey, ""),
+        unitFor(readKey, isBlur ? "px" : ""),
       ) ?? { num: typeof fromRaw === "number" ? fromRaw : 0, unit: "" };
       startNum = startParsed.num;
-      unit = unitFor(readKey, startParsed.unit);
+      unit = isBlur ? "px" : unitFor(readKey, startParsed.unit);
       const rel = parseRelative(endRaw);
       if (rel) {
         endNum = applyRelative(startNum, rel);
-        if (rel.unit) unit = unitFor(readKey, rel.unit);
+        if (rel.unit) unit = isBlur ? "px" : unitFor(readKey, rel.unit);
       } else {
         const endParsed = parseNumeric(
           endRaw,
           unit,
         ) ?? { num: Number(endRaw) || 0, unit: "" };
         endNum = endParsed.num;
-        unit = unitFor(readKey, endParsed.unit || unit);
+        unit = isBlur ? "px" : unitFor(readKey, endParsed.unit || unit);
       }
     } else if (mode === "from") {
       const rel = parseRelative(endRaw);
@@ -272,19 +278,21 @@ function buildProps(
           endNum = readAttrNumber(target as Element, key);
           startNum = applyRelative(endNum, rel);
         } else if (isElement && kind === "style") {
-          endNum = readStyleNumber(target as Element, readKey).num;
+          endNum = isBlur
+            ? readBlur(target as Element)
+            : readStyleNumber(target as Element, readKey).num;
           startNum = applyRelative(endNum, rel);
         } else {
           endNum = readObjectNumber(target as object, readKey);
           startNum = applyRelative(endNum, rel);
         }
-        unit = unitFor(readKey, rel.unit);
+        unit = isBlur ? "px" : unitFor(readKey, rel.unit);
       } else {
         const startParsed = parseNumeric(
           endRaw,
-          unitFor(readKey, ""),
+          unitFor(readKey, isBlur ? "px" : ""),
         ) ?? { num: 0, unit: "" };
-        unit = unitFor(readKey, startParsed.unit);
+        unit = isBlur ? "px" : unitFor(readKey, startParsed.unit);
         startNum = startParsed.num;
         if (isElement && kind !== "object") {
           if (kind === "transform") {
@@ -292,6 +300,8 @@ function buildProps(
               key === "scale" || key === "scaleX" || key === "scaleY" ? 1 : 0;
           } else if (kind === "attr") {
             endNum = readAttrNumber(target as Element, key);
+          } else if (isBlur) {
+            endNum = readBlur(target as Element);
           } else {
             endNum = readStyleNumber(target as Element, readKey).num;
           }
@@ -302,12 +312,14 @@ function buildProps(
     } else {
       if (fromRaw !== undefined) {
         startNum =
-          parseNumeric(fromRaw, unitFor(readKey, ""))?.num ??
+          parseNumeric(fromRaw, unitFor(readKey, isBlur ? "px" : ""))?.num ??
           (typeof fromRaw === "number" ? fromRaw : 0);
-        unit = unitFor(
-          readKey,
-          parseNumeric(fromRaw, "")?.unit ?? "",
-        );
+        unit = isBlur
+          ? "px"
+          : unitFor(readKey, parseNumeric(fromRaw, "")?.unit ?? "");
+      } else if (isElement && isBlur) {
+        startNum = readBlur(target as Element);
+        unit = "px";
       } else if (isElement && kind === "style") {
         const current = readStyleNumber(target as Element, readKey);
         startNum = current.num;
@@ -325,14 +337,14 @@ function buildProps(
       const rel = parseRelative(endRaw);
       if (rel) {
         endNum = applyRelative(startNum, rel);
-        unit = unitFor(readKey, rel.unit || unit);
+        unit = isBlur ? "px" : unitFor(readKey, rel.unit || unit);
       } else {
         const endParsed = parseNumeric(
           endRaw,
-          unitFor(readKey, unit),
+          unitFor(readKey, isBlur ? "px" : unit),
         ) ?? { num: Number(endRaw) || 0, unit: "" };
         endNum = endParsed.num;
-        unit = unitFor(readKey, endParsed.unit || unit);
+        unit = isBlur ? "px" : unitFor(readKey, endParsed.unit || unit);
       }
     }
 
@@ -386,6 +398,10 @@ function renderTarget(runtime: TargetRuntime, ratio: number) {
         el.style.visibility = value <= 0.001 ? "hidden" : "inherit";
         continue;
       }
+      if (prop.key === "blur") {
+        writeBlur(target as Element, value);
+        continue;
+      }
       (target as HTMLElement).style.setProperty(
         cssPropName(prop.key),
         formatValue(value, prop.unit),
@@ -425,6 +441,8 @@ class Tween implements TweenHandle {
   private readonly onUpdate?: () => void;
   private readonly onComplete?: () => void;
   private readonly onRepeat?: () => void;
+  private readonly onInterrupt?: () => void;
+  private readonly repeatRefresh: boolean;
   private readonly clearProps: string | boolean | undefined;
   private readonly transformOrigin?: string;
   private readonly tweenId?: string;
@@ -438,6 +456,7 @@ class Tween implements TweenHandle {
   private scale = 1;
   private startedCallback = false;
   private completedCallback = false;
+  private interruptFired = false;
   private claimed = false;
   private registered = false;
   private unsub: (() => void) | null = null;
@@ -483,6 +502,8 @@ class Tween implements TweenHandle {
     this.onUpdate = vars.onUpdate;
     this.onComplete = vars.onComplete;
     this.onRepeat = vars.onRepeat;
+    this.onInterrupt = vars.onInterrupt;
+    this.repeatRefresh = !!vars.repeatRefresh;
     this.clearProps = vars.clearProps;
     this.transformOrigin =
       typeof vars.transformOrigin === "string"
@@ -595,6 +616,7 @@ class Tween implements TweenHandle {
     this.playingForward = true;
     this.startedCallback = false;
     this.completedCallback = false;
+    this.interruptFired = false;
     this.thenSettled = false;
     this.claimed = false;
     this.ratio = 0;
@@ -605,18 +627,34 @@ class Tween implements TweenHandle {
   }
 
   kill() {
+    const shouldInterrupt =
+      this.state !== "killed" &&
+      this.state !== "completed" &&
+      !this.interruptFired;
     this.releaseClaims();
     this.unregister();
     if (this.tweenId) unregisterId(this.tweenId, this);
     this.state = "killed";
     this.clearTicker();
     this.targets.length = 0;
+    if (shouldInterrupt) {
+      this.interruptFired = true;
+      this.onInterrupt?.();
+    }
     this.settleThen();
     return this;
   }
 
   invalidate() {
     if (this.state === "killed") return this;
+    this.rebuildProps();
+    if (this.startedCallback) {
+      this.renderAt(this.elapsed);
+    }
+    return this;
+  }
+
+  private rebuildProps() {
     for (const runtime of this.targets) {
       const { props, transform } = buildProps(
         runtime.target,
@@ -630,10 +668,6 @@ class Tween implements TweenHandle {
       runtime.props = props;
       runtime.transform = transform;
     }
-    if (this.startedCallback) {
-      this.renderAt(this.elapsed);
-    }
-    return this;
   }
 
   then<TResult1 = void, TResult2 = never>(
@@ -694,6 +728,25 @@ class Tween implements TweenHandle {
   progress(value?: number) {
     if (value === undefined) return this.ratio;
     this.renderAt(value * this.durationSec);
+    return this;
+  }
+
+  totalProgress(value?: number) {
+    const total = this.totalDuration;
+    if (value === undefined) {
+      if (!Number.isFinite(total) || total <= 0) {
+        return this.ratio;
+      }
+      const played =
+        this.iteration * this.cycleLength() +
+        Math.min(this.elapsed, this.durationSec);
+      return Math.max(0, Math.min(1, played / total));
+    }
+    if (!Number.isFinite(total) || total <= 0) {
+      this.renderAt(value * this.durationSec);
+      return this;
+    }
+    this.renderAt(value * total);
     return this;
   }
 
@@ -767,6 +820,9 @@ class Tween implements TweenHandle {
     }
 
     if (cycle > 0 && cycle !== this.lastRepeatFired && cycle > this.iteration) {
+      if (this.repeatRefresh) {
+        this.rebuildProps();
+      }
       this.onRepeat?.();
       this.lastRepeatFired = cycle;
     }
@@ -868,6 +924,10 @@ class Tween implements TweenHandle {
         if (key === "autoAlpha") {
           el.style.removeProperty("opacity");
           el.style.removeProperty("visibility");
+          continue;
+        }
+        if (key === "blur") {
+          el.style.removeProperty("filter");
           continue;
         }
         const attrProp = runtime.props.find(

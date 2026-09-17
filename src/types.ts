@@ -46,6 +46,8 @@ export type StaggerVars = {
   /** Total time span to distribute across items (overrides `each`). */
   amount?: number;
   from?: StaggerFrom;
+  /** 2D layout: `[cols, rows]` or `[cols]` (rows inferred from total). */
+  grid?: [number, number] | [number];
 };
 
 export type Vars = Record<string, unknown> & {
@@ -77,10 +79,14 @@ export type Vars = Record<string, unknown> & {
   id?: string;
   /** Snap interpolated values: increment or nearest in array. */
   snap?: Record<string, number | number[]>;
+  /** Rebuild start/end from current state before each repeat cycle. */
+  repeatRefresh?: boolean;
   onStart?: () => void;
   onUpdate?: () => void;
   onComplete?: () => void;
   onRepeat?: () => void;
+  /** Fired once when killed via overwrite or explicit kill (not on complete). */
+  onInterrupt?: () => void;
 };
 
 export type Position = number | string;
@@ -103,13 +109,18 @@ export interface TweenControls extends PromiseLike<void> {
   restart(): this;
   kill(): this;
   seek(time: number): this;
+  /** Per-iteration progress (0–1 over `duration`). */
   progress(value?: number): number | this;
+  /** Progress across full run including repeats (0–1 over `totalDuration`). */
+  totalProgress(value?: number): number | this;
   /** Get/set playback rate (1 = normal). */
   timeScale(value?: number): number | this;
   isActive(): boolean;
   /** Rebuild start/end from current state using stored raw vars. */
   invalidate(): this;
   readonly duration: number;
+  /** Full run length including repeats and repeatDelay. */
+  readonly totalDuration: number;
   readonly time: number;
   readonly totalTime: number;
 }
