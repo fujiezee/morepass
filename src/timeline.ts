@@ -57,6 +57,8 @@ export class Timeline implements TimelineControls {
   private ratio = 0;
   private total = 0;
   private scale = 1;
+  private thenSettled = false;
+  private thenResolvers: Array<() => void> = [];
 
   constructor(vars: TimelineVars = {}) {
     this.defaults = vars.defaults ?? {};
@@ -240,6 +242,11 @@ export class Timeline implements TimelineControls {
           return proxy;
         },
         isActive: () => nested.isActive(),
+        invalidate: () => {
+          nested.invalidate();
+          return proxy;
+        },
+        then: (onfulfilled, onrejected) => nested.then(onfulfilled, onrejected),
         renderAt: (t: number) => {
           nested.seek(Math.max(0, t));
         },
@@ -291,6 +298,11 @@ export class Timeline implements TimelineControls {
     if (this.state === "paused") {
       this.startWall += performance.now() / 1000 - this.pauseWall;
       this.state = "active";
+      if (this.total === 0) {
+        this.renderAt(0);
+        this.finish();
+        return this;
+      }
       this.ensureTicker();
       return this;
     }
@@ -339,6 +351,7 @@ export class Timeline implements TimelineControls {
     this.playingForward = true;
     this.startedCallback = false;
     this.completedCallback = false;
+    this.thenSettled = false;
     for (const child of this.children) {
       if (child.kind === "callback") child.called = false;
     }
@@ -352,7 +365,47 @@ export class Timeline implements TimelineControls {
     this.clearTicker();
     for (const child of this.children) child.tween?.kill();
     this.children.length = 0;
+    this.settleThen();
     return this;
+  }
+
+  invalidate() {
+    if (this.state === "killed") return this;
+    for (const child of this.children) {
+      child.tween?.invalidate();
+    }
+    return this;
+  }
+
+  then<TResult1 = void, TResult2 = never>(
+    onfulfilled?:
+      | ((value: void) => TResult1 | PromiseLike<TResult1>)
+      | null
+      | undefined,
+    onrejected?:
+      | ((reason: unknown) => TResult2 | PromiseLike<TResult2>)
+      | null
+      | undefined,
+  ): PromiseLike<TResult1 | TResult2> {
+    const promise = new Promise<void>((resolve) => {
+      if (
+        this.thenSettled ||
+        this.state === "completed" ||
+        this.state === "killed"
+      ) {
+        resolve();
+      } else {
+        this.thenResolvers.push(resolve);
+      }
+    });
+    return promise.then(onfulfilled, onrejected);
+  }
+
+  private settleThen() {
+    if (this.thenSettled) return;
+    this.thenSettled = true;
+    const resolvers = this.thenResolvers.splice(0);
+    for (const resolve of resolvers) resolve();
   }
 
   seek(time: number) {
@@ -508,6 +561,7 @@ export class Timeline implements TimelineControls {
       this.completedCallback = true;
       this.onComplete?.();
     }
+    this.settleThen();
   }
 }
 

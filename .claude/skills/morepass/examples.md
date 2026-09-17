@@ -49,6 +49,30 @@ MorePass.to(".item", {
 })
 ```
 
+## Function ends without stagger + snap + await
+
+```ts
+const tw = MorePass.to(".box", {
+  x: () => window.innerWidth - 100,
+  snap: { x: [0, 100, 200, 300] },
+  duration: 0.8,
+})
+await tw
+// kill also resolves so await never hangs
+```
+
+## invalidate rebuild
+
+```ts
+const tw = MorePass.to(obj, {
+  x: () => obj.x + 40,
+  duration: 1,
+  paused: true,
+})
+obj.x = 10
+tw.invalidate().play()
+```
+
 ## Overwrite collision
 
 ```ts

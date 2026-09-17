@@ -2,7 +2,7 @@
 
 A small, modern tween library — built so **AI agents learn it in one Skill**, and humans ship motion without fighting the stack.
 
-**v0.6.0** · TypeScript · relative values · xPercent/yPercent · transformOrigin · getById · timeline · keyframes · quickTo · context · delayedCall · clearProps · attr · CSS vars · killTweensOf · getProperty · autoAlpha · timeScale · stagger · scrollTrigger · matchMedia · utils
+**v0.7.0** · TypeScript · function ends · snap · then/invalidate · skewX/skewY · relative values · xPercent/yPercent · transformOrigin · getById · timeline · keyframes · quickTo · context · delayedCall · clearProps · attr · CSS vars · killTweensOf · getProperty · autoAlpha · timeScale · stagger · scrollTrigger · matchMedia · utils
 
 ```bash
 npm install morepass

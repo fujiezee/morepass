@@ -30,6 +30,7 @@ import {
 import { registerId, unregisterId } from "./ids";
 import { registerTween, unregisterTween } from "./registry";
 import { ticker } from "./ticker";
+import { snap as snapValue } from "./utils";
 import type {
   EaseFn,
   Target,
@@ -60,15 +61,34 @@ const SPECIAL = new Set([
   "attr",
   "transformOrigin",
   "id",
+  "snap",
 ]);
 
 type ResolvedTarget = object | Element;
+type SnapMap = Record<string, number | number[]>;
 
 interface TargetRuntime {
   target: ResolvedTarget;
   isElement: boolean;
   props: ParsedProp[];
   transform: TransformBag | null;
+  index: number;
+}
+
+function resolvePropValue(
+  raw: unknown,
+  index: number,
+  target: ResolvedTarget,
+  targets: ResolvedTarget[],
+): unknown {
+  if (typeof raw === "function") {
+    return (raw as (i: number, t: object, all: object[]) => unknown)(
+      index,
+      target,
+      targets,
+    );
+  }
+  return raw;
 }
 
 export interface TweenHandle extends TweenControls, PropOwner {
@@ -105,6 +125,9 @@ function buildProps(
   fromVars: Vars | null,
   toVars: Vars,
   mode: "to" | "from" | "fromTo",
+  index = 0,
+  targets: ResolvedTarget[] = [target],
+  snapMap?: SnapMap,
 ): { props: ParsedProp[]; transform: TransformBag | null } {
   const isElement =
     typeof Element !== "undefined" && target instanceof Element;
@@ -128,14 +151,20 @@ function buildProps(
     if (endRaw !== undefined) entries.push([`@attr:${key}`, endRaw]);
   }
 
-  for (const [rawKey, endRaw] of entries) {
+  for (const [rawKey, endUnresolved] of entries) {
     const isAttr = rawKey.startsWith("@attr:");
     const key = isAttr ? rawKey.slice(6) : rawKey;
-    const fromRaw = isAttr
+    const endRaw = resolvePropValue(endUnresolved, index, target, targets);
+    const fromUnresolved = isAttr
       ? attrFrom[key]
       : fromVars
         ? fromVars[key]
         : undefined;
+    const fromRaw =
+      fromUnresolved !== undefined
+        ? resolvePropValue(fromUnresolved, index, target, targets)
+        : undefined;
+    const propSnap = snapMap?.[key];
     const isAutoAlpha = key === "autoAlpha";
     const isCssVar = key.startsWith("--");
     const readKey = isAutoAlpha ? "opacity" : key;
@@ -198,6 +227,7 @@ function buildProps(
         unit: "",
         startColor,
         endColor,
+        snap: propSnap,
         active: true,
       });
       continue;
@@ -313,6 +343,7 @@ function buildProps(
       start: startNum,
       end: endNum,
       unit,
+      snap: propSnap,
       active: true,
     });
   }
@@ -341,7 +372,8 @@ function renderTarget(runtime: TargetRuntime, ratio: number) {
       continue;
     }
 
-    const value = prop.start + (prop.end - prop.start) * ratio;
+    let value = prop.start + (prop.end - prop.start) * ratio;
+    if (prop.snap != null) value = snapValue(prop.snap, value);
     if (prop.kind === "transform" && transform) {
       applyTransformProp(transform, prop.key, value);
       wroteTransform = true;
@@ -411,9 +443,33 @@ class Tween implements TweenHandle {
   private unsub: (() => void) | null = null;
   private ratio = 0;
   private readonly totalIterations: number;
+  private rebuildFrom: Vars | null;
+  private rebuildTo: Vars;
+  private rebuildMode: TweenMode;
+  private allTargets: ResolvedTarget[];
+  private snapMap?: SnapMap;
+  private thenSettled = false;
+  private thenResolvers: Array<() => void> = [];
 
-  constructor(targets: TargetRuntime[], vars: Vars) {
+  constructor(
+    targets: TargetRuntime[],
+    vars: Vars,
+    rebuild: {
+      from: Vars | null;
+      to: Vars;
+      mode: TweenMode;
+      allTargets: ResolvedTarget[];
+    },
+  ) {
     this.targets = targets;
+    this.rebuildFrom = rebuild.from;
+    this.rebuildTo = rebuild.to;
+    this.rebuildMode = rebuild.mode;
+    this.allTargets = rebuild.allTargets;
+    this.snapMap =
+      vars.snap && typeof vars.snap === "object"
+        ? (vars.snap as SnapMap)
+        : undefined;
     this.ease = resolveEase(vars.ease);
     this.delay = Math.max(0, vars.delay ?? 0);
     this.durationSec = Math.max(0, vars.duration ?? 0.5);
@@ -539,6 +595,7 @@ class Tween implements TweenHandle {
     this.playingForward = true;
     this.startedCallback = false;
     this.completedCallback = false;
+    this.thenSettled = false;
     this.claimed = false;
     this.ratio = 0;
     for (const runtime of this.targets) {
@@ -554,7 +611,60 @@ class Tween implements TweenHandle {
     this.state = "killed";
     this.clearTicker();
     this.targets.length = 0;
+    this.settleThen();
     return this;
+  }
+
+  invalidate() {
+    if (this.state === "killed") return this;
+    for (const runtime of this.targets) {
+      const { props, transform } = buildProps(
+        runtime.target,
+        this.rebuildFrom,
+        this.rebuildTo,
+        this.rebuildMode,
+        runtime.index,
+        this.allTargets,
+        this.snapMap,
+      );
+      runtime.props = props;
+      runtime.transform = transform;
+    }
+    if (this.startedCallback) {
+      this.renderAt(this.elapsed);
+    }
+    return this;
+  }
+
+  then<TResult1 = void, TResult2 = never>(
+    onfulfilled?:
+      | ((value: void) => TResult1 | PromiseLike<TResult1>)
+      | null
+      | undefined,
+    onrejected?:
+      | ((reason: unknown) => TResult2 | PromiseLike<TResult2>)
+      | null
+      | undefined,
+  ): PromiseLike<TResult1 | TResult2> {
+    const promise = new Promise<void>((resolve) => {
+      if (
+        this.thenSettled ||
+        this.state === "completed" ||
+        this.state === "killed"
+      ) {
+        resolve();
+      } else {
+        this.thenResolvers.push(resolve);
+      }
+    });
+    return promise.then(onfulfilled, onrejected);
+  }
+
+  private settleThen() {
+    if (this.thenSettled) return;
+    this.thenSettled = true;
+    const resolvers = this.thenResolvers.splice(0);
+    for (const resolve of resolvers) resolve();
   }
 
   killAll() {
@@ -724,6 +834,7 @@ class Tween implements TweenHandle {
       this.onComplete?.();
     }
     this.clearTicker();
+    this.settleThen();
   }
 
   private applyTransformOrigin() {
@@ -787,23 +898,38 @@ export function createTweenHandle(
   const mergedTo = mergeDefaults(toVars);
   const mergedFrom = fromVars ? mergeDefaults(fromVars) : null;
   const resolved = resolveTargets(target);
-  const runtimes: TargetRuntime[] = resolved.map((item) => {
+  const snapMap =
+    mergedTo.snap && typeof mergedTo.snap === "object"
+      ? (mergedTo.snap as SnapMap)
+      : mergedFrom?.snap && typeof mergedFrom.snap === "object"
+        ? (mergedFrom.snap as SnapMap)
+        : undefined;
+  const runtimes: TargetRuntime[] = resolved.map((item, index) => {
     const { props, transform } = buildProps(
       item,
       mergedFrom,
       mergedTo,
       mode,
+      index,
+      resolved,
+      snapMap,
     );
     return {
       target: item,
       isElement: typeof Element !== "undefined" && item instanceof Element,
       props,
       transform,
+      index,
     };
   });
 
   const vars = mode === "from" ? (mergedFrom ?? mergedTo) : mergedTo;
-  const tween = new Tween(runtimes, vars);
+  const tween = new Tween(runtimes, vars, {
+    from: mergedFrom,
+    to: mergedTo,
+    mode,
+    allTargets: resolved,
+  });
   collectIntoContext(tween);
 
   const immediate =

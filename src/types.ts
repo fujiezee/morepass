@@ -75,6 +75,8 @@ export type Vars = Record<string, unknown> & {
   transformOrigin?: string;
   /** Lookup via MorePass.getById(id). */
   id?: string;
+  /** Snap interpolated values: increment or nearest in array. */
+  snap?: Record<string, number | number[]>;
   onStart?: () => void;
   onUpdate?: () => void;
   onComplete?: () => void;
@@ -94,7 +96,7 @@ export type TimelineVars = {
 
 export type TweenState = "idle" | "active" | "paused" | "completed" | "killed";
 
-export interface TweenControls {
+export interface TweenControls extends PromiseLike<void> {
   play(): this;
   pause(): this;
   reverse(): this;
@@ -105,6 +107,8 @@ export interface TweenControls {
   /** Get/set playback rate (1 = normal). */
   timeScale(value?: number): number | this;
   isActive(): boolean;
+  /** Rebuild start/end from current state using stored raw vars. */
+  invalidate(): this;
   readonly duration: number;
   readonly time: number;
   readonly totalTime: number;

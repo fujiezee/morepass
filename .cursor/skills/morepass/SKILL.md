@@ -4,7 +4,8 @@ description: >-
   Animate DOM or plain objects with MorePass: to/from/fromTo, timeline, stagger,
   keyframes, quickTo, context, delayedCall, killTweensOf, getById, getProperty,
   autoAlpha, timeScale, clearProps, attr, CSS variables, relative values,
-  xPercent/yPercent, transformOrigin, scrollTrigger, matchMedia, utils.
+  function end values, snap, then/invalidate, skewX/skewY, xPercent/yPercent,
+  transformOrigin, scrollTrigger, matchMedia, utils.
   Use when writing or refactoring motion code, or when the user mentions MorePass,
   tween, scrub, pin, or scroll-linked animation.
 ---
@@ -38,6 +39,11 @@ Targets: CSS selector string, `Element`, plain object, or arrays of those.
 | Sequence / overlap | `MorePass.timeline()` |
 | Multi-step one call | `keyframes: [...]` or `"0%"/ "50%"/ "100%"` |
 | Relative end (`+=` `-=` `*=`) | `x: "+=40"` |
+| Function end values | `x: () => n` (resolved at build / `invalidate`) |
+| Snap after interpolate | `snap: { x: 10 }` or `{ x: [0, 50, 100] }` |
+| Await complete / kill | `await tw` / `tw.then(...)` |
+| Rebuild start/end | `tw.invalidate()` |
+| Skew | `skewX` / `skewY` |
 | Percent translate | `xPercent` / `yPercent` |
 | Pivot | `transformOrigin: "50% 50%"` |
 | Find by id | `id: "hero"` → `MorePass.getById("hero")` |
@@ -54,14 +60,14 @@ Targets: CSS selector string, `Element`, plain object, or arrays of those.
 | Global defaults | `MorePass.defaults({ ease: "power2.out" })` |
 | Scroll-linked | `scrollTrigger: { ... }` on vars |
 | Breakpoint contexts | `MorePass.matchMedia({ query: () => ... })` |
-| Math helpers | `MorePass.utils.*` (incl. `wrap`, `distribute`) |
+| Math helpers | `MorePass.utils.*` (incl. `wrap`, `distribute`, `snap`) |
 
 ## Vars (common)
 
 ```ts
 {
-  // animatable: x, y, scale, scaleX, scaleY, rotation, opacity, autoAlpha,
-  // width, height, backgroundColor, color, borderRadius, …
+  // animatable: x, y, scale, scaleX, scaleY, rotation, skewX, skewY, opacity,
+  // autoAlpha, width, height, backgroundColor, color, borderRadius, …
   duration: 0.5,          // seconds (default 0.5)
   delay: 0,
   ease: "power2.out",     // see Eases below
@@ -77,6 +83,7 @@ Targets: CSS selector string, `Element`, plain object, or arrays of those.
   attr: { /* svg attrs */ },
   transformOrigin: "50% 0%",
   id: "hero",
+  snap: { x: 10 },        // or { x: [0, 50, 100] }
   clearProps: "opacity,x", // or "all" / true
   onStart() {},
   onUpdate() {},
@@ -85,7 +92,7 @@ Targets: CSS selector string, `Element`, plain object, or arrays of those.
 }
 ```
 
-Controls (every tween/timeline): `play pause reverse restart kill seek progress timeScale isActive` + `duration` / `time`.
+Controls (every tween/timeline): `play pause reverse restart kill seek progress timeScale isActive invalidate` + `then` (PromiseLike) + `duration` / `time`.
 
 ## Recipes
 
@@ -104,6 +111,16 @@ MorePass.to(".box", { x: "+=80", xPercent: -50, duration: 0.5 })
 MorePass.to(".box", { rotation: 90, transformOrigin: "0% 50%", duration: 0.6 })
 MorePass.to(".box", { x: 200, id: "slide" })
 MorePass.getById("slide")?.pause()
+
+// function ends + snap + await
+MorePass.to(".box", {
+  x: () => window.innerWidth - 120,
+  snap: { x: 20 },
+  duration: 0.8,
+})
+const tw = MorePass.to(".box", { skewX: 12, duration: 0.5 })
+await tw
+tw.invalidate() // rebuild start/end from current state
 ```
 
 ### Timeline positions
@@ -116,6 +133,7 @@ tl.to(".c", { y: 40, duration: 0.3 }, ">")          // after previous end
 tl.to(".d", { x: 0, duration: 0.3 }, "<")           // with previous start
 tl.addLabel("spin", 1)
 tl.to(".e", { rotation: 360, duration: 0.6 }, "spin")
+await tl // resolves on complete; also resolves if kill()
 ```
 
 Position tokens: absolute seconds, `"+=0.2"`, `"-=0.2"`, `"<"`, `">"`, `"<0.1"`, `">+=0.2"`, label names.
@@ -272,9 +290,11 @@ Default ease: `power1.out`.
 
 ## Transform & color rules
 
-- On elements, `x` `y` `scale` `scaleX` `scaleY` `rotation` share one transform bag (do not fight with raw `transform` CSS).
+- On elements, `x` `y` `scale` `scaleX` `scaleY` `rotation` `skewX` `skewY` share one transform bag (do not fight with raw `transform` CSS).
 - Colors: hex / `rgb(a)` / named → `backgroundColor`, `color`, etc.
 - Plain objects: any numeric (or color string) own properties.
+- Function end values resolve at build and again on `invalidate()`; stagger still uses `(i, target, targets)`.
+- `snap` runs after interpolate via `utils.snap`.
 
 ## Overwrite
 
@@ -292,7 +312,7 @@ Default ease: `power1.out`.
 
 **Don't**
 - Don't invent a second animation stack beside MorePass in the same feature.
-- Don't animate the `transform` string directly; use `x` / `y` / `rotation` / `scale`.
+- Don't animate the `transform` string directly; use `x` / `y` / `rotation` / `scale` / `skewX` / `skewY`.
 - Don't leave tweens running after unmount — `kill()` or `context().revert()`.
 - Don't expect layout-FLIP, text-split, or drag plugins here — stay on the core motion APIs above.
 
@@ -306,7 +326,8 @@ Default ease: `power1.out`.
 | Scope | `context` → `revert` |
 | Delay | `delayedCall` |
 | Teardown | `kill` `killTweensOf` `clearProps` |
-| Read | `getProperty` `isTweening` |
+| Await / rebuild | `then` / `await tw` · `invalidate` |
+| Read | `getProperty` `isTweening` `getById` |
 | Attr / CSS var | `attr:{}` / `"--token"` |
 | Scroll | `scrollTrigger` |
 | Responsive | `matchMedia` |

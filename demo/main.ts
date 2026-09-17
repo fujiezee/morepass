@@ -125,8 +125,8 @@ function resetVisuals() {
     "position:absolute;top:40%;left:40px;width:72px;height:72px;background:linear-gradient(145deg,#2fe39a,#147a4f);";
   box2.style.cssText =
     "position:absolute;top:40%;left:40px;width:72px;height:72px;opacity:0.3;background:linear-gradient(145deg,#ffc857,#9a6d16);";
-  MorePass.set(box, { x: 0, y: 0, scale: 1, rotation: 0, opacity: 1, xPercent: 0, yPercent: 0 });
-  MorePass.set(box2, { x: 0, y: 0, scale: 0.6, rotation: 0, opacity: 0.3 });
+  MorePass.set(box, { x: 0, y: 0, scale: 1, rotation: 0, opacity: 1, xPercent: 0, yPercent: 0, skewX: 0, skewY: 0 });
+  MorePass.set(box2, { x: 0, y: 0, scale: 0.6, rotation: 0, opacity: 0.3, skewX: 0, skewY: 0 });
 
   onceBox.style.cssText =
     "position:absolute;top:40%;left:40px;width:72px;height:72px;background:linear-gradient(145deg,#2fe39a,#147a4f);";
@@ -648,6 +648,93 @@ MorePass.getById("hero")?.pause()`);
         status("getById('hero') · paused mid-flight");
       });
       status("getById · playing as id hero");
+    },
+
+    function() {
+      showPanel("panel-tween");
+      show(`MorePass.to(box, {
+  x: () => 280 + Math.random() * 80,
+  duration: 0.8,
+})`);
+      current = MorePass.to(box, {
+        x: () => 280 + Math.random() * 80,
+        rotation: () => -8 + Math.random() * 16,
+        duration: 0.85,
+        ease: "power2.out",
+      });
+      status("function · end values resolved at build");
+    },
+
+    snap() {
+      showPanel("panel-tween");
+      show(`MorePass.to(box, {
+  x: 360, snap: { x: 60 },
+  duration: 1.2, ease: "none",
+})`);
+      current = MorePass.to(box, {
+        x: 360,
+        snap: { x: 60 },
+        duration: 1.2,
+        ease: "none",
+      });
+      status("snap · x steps of 60");
+    },
+
+    then() {
+      showPanel("panel-tween");
+      show(`const tw = MorePass.to(box, { x: 300, duration: 0.7 })
+await tw
+// also resolves if kill()`);
+      status("then · awaiting…");
+      current = MorePass.to(box, {
+        x: 300,
+        scale: 1.08,
+        duration: 0.7,
+        ease: "power2.out",
+      });
+      void current.then(() => {
+        status("then · resolved on complete");
+      });
+    },
+
+    invalidate() {
+      showPanel("panel-tween");
+      show(`const tw = MorePass.to(box, {
+  x: () => 200 + Math.random() * 160,
+  duration: 1, paused: true,
+})
+// move box, then:
+tw.invalidate().play()`);
+      MorePass.set(box, { x: 40 });
+      current = MorePass.to(box, {
+        x: () => 200 + Math.random() * 160,
+        duration: 1,
+        ease: "power2.out",
+        paused: true,
+      });
+      delayedCall(0.35, () => {
+        MorePass.set(box, { x: 120 });
+        current?.invalidate().play();
+        status("invalidate · rebuilt from x=120");
+      });
+      status("invalidate · will rebuild mid-flight");
+      current.play();
+    },
+
+    skew() {
+      showPanel("panel-tween");
+      show(`MorePass.to(box, {
+  skewX: 18, skewY: -8,
+  duration: 0.8, ease: "power2.out",
+})`);
+      current = MorePass.to(box, {
+        skewX: 18,
+        skewY: -8,
+        x: 220,
+        duration: 0.85,
+        ease: "power2.out",
+      });
+      status("skew · skewX / skewY");
     },
 
     matchMedia() {

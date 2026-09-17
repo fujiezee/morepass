@@ -10,6 +10,8 @@ export interface ParsedProp {
   unit: string;
   startColor?: import("./color").RGBA;
   endColor?: import("./color").RGBA;
+  /** Snap increment or candidate list (applied after interpolate). */
+  snap?: number | number[];
   active: boolean;
 }
 
