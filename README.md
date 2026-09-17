@@ -30,6 +30,7 @@ MorePass.timeline()
 |---|---|
 | `to` / `from` / `fromTo` / `set` | Core tweens |
 | `timeline()` | Sequencing, labels, `+=` / `-=` / `<` / `>` |
+| `stagger` | `0.1` or `{ each, amount, from }` + function values |
 | Transforms | `x y scale rotation …` via shared transform bag |
 | Colors | hex / rgb(a) / named → `backgroundColor`, `color`, … |
 | Overwrite | default `"auto"` — only conflicting props |

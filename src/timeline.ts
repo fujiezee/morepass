@@ -1,8 +1,11 @@
+import { mapFunctionValues, resolveStaggerDelay } from "./stagger";
 import { ticker } from "./ticker";
 import {
   createTweenHandle,
   isTweenHandle,
+  resolveTargets,
   type TweenHandle,
+  type TweenMode,
 } from "./tween";
 import type {
   Position,
@@ -84,19 +87,20 @@ export class Timeline implements TimelineControls {
   }
 
   to(target: Target | Target[], vars: Vars, position?: Position) {
-    const tween = createTweenHandle(
-      target,
-      null,
-      mergeDefaults(this.defaults, vars),
-      "to",
-      { autoPlay: false },
-    );
+    const merged = mergeDefaults(this.defaults, vars);
+    if (this.placeStaggered(target, null, merged, "to", position)) return this;
+    const tween = createTweenHandle(target, null, merged, "to", {
+      autoPlay: false,
+    });
     this.placeTween(tween, position);
     return this;
   }
 
   from(target: Target | Target[], vars: Vars, position?: Position) {
     const merged = mergeDefaults(this.defaults, vars);
+    if (this.placeStaggered(target, merged, merged, "from", position)) {
+      return this;
+    }
     const tween = createTweenHandle(target, merged, merged, "from", {
       autoPlay: false,
     });
@@ -110,19 +114,78 @@ export class Timeline implements TimelineControls {
     toVars: Vars,
     position?: Position,
   ) {
-    const tween = createTweenHandle(
-      target,
-      fromVars,
-      mergeDefaults(this.defaults, toVars),
-      "fromTo",
-      { autoPlay: false },
-    );
+    const merged = mergeDefaults(this.defaults, toVars);
+    if (
+      this.placeStaggered(
+        target,
+        fromVars,
+        { ...merged, stagger: merged.stagger ?? fromVars.stagger },
+        "fromTo",
+        position,
+      )
+    ) {
+      return this;
+    }
+    const tween = createTweenHandle(target, fromVars, merged, "fromTo", {
+      autoPlay: false,
+    });
     this.placeTween(tween, position);
     return this;
   }
 
   set(target: Target | Target[], vars: Vars, position?: Position) {
     return this.to(target, { ...vars, duration: 0, ease: "none" }, position);
+  }
+
+  private placeStaggered(
+    target: Target | Target[],
+    fromVars: Vars | null,
+    toVars: Vars,
+    mode: TweenMode,
+    position?: Position,
+  ): boolean {
+    const targets = resolveTargets(target);
+    if (toVars.stagger == null || targets.length <= 1) return false;
+
+    const { stagger, delay = 0, ...rest } = toVars;
+    const base = this.resolvePosition(position) + delay;
+    const cleanFrom = fromVars
+      ? (({ stagger: _s, delay: _d, ...f }) => f)(fromVars)
+      : null;
+
+    for (let i = 0; i < targets.length; i++) {
+      const start =
+        base + resolveStaggerDelay(i, targets.length, stagger!);
+      const itemTo = mapFunctionValues(
+        { ...rest, delay: 0 },
+        i,
+        targets[i],
+        targets,
+      ) as Vars;
+
+      let tween: TweenHandle;
+      if (mode === "to") {
+        tween = createTweenHandle(targets[i], null, itemTo, "to", {
+          autoPlay: false,
+        });
+      } else if (mode === "from") {
+        tween = createTweenHandle(targets[i], itemTo, itemTo, "from", {
+          autoPlay: false,
+        });
+      } else {
+        const itemFrom = mapFunctionValues(
+          { ...(cleanFrom ?? {}), delay: 0 },
+          i,
+          targets[i],
+          targets,
+        ) as Vars;
+        tween = createTweenHandle(targets[i], itemFrom, itemTo, "fromTo", {
+          autoPlay: false,
+        });
+      }
+      this.placeTween(tween, start);
+    }
+    return true;
   }
 
   add(

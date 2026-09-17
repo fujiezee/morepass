@@ -1,10 +1,12 @@
+import { set, to, from, fromTo } from "./animate";
 import { ease } from "./ease";
 import { timeline } from "./timeline";
-import { set, to, from, fromTo } from "./tween";
 import type {
   EaseFn,
   EaseName,
   Position,
+  StaggerFrom,
+  StaggerVars,
   Target,
   TimelineControls,
   TimelineVars,
@@ -16,6 +18,8 @@ export type {
   EaseFn,
   EaseName,
   Position,
+  StaggerFrom,
+  StaggerVars,
   Target,
   TimelineControls,
   TimelineVars,

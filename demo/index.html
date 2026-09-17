@@ -88,6 +88,30 @@
         transform: scale(0.6);
       }
 
+      .dots {
+        display: none;
+        position: absolute;
+        inset: 0;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+      }
+
+      .stage.show-dots .box {
+        display: none;
+      }
+
+      .stage.show-dots .dots {
+        display: flex;
+      }
+
+      .dot {
+        width: 28px;
+        height: 28px;
+        background: var(--accent);
+        opacity: 0.25;
+      }
+
       .controls {
         display: flex;
         flex-wrap: wrap;
@@ -128,9 +152,17 @@
         transforms, easing, and playback controls.
       </p>
 
-      <div class="stage">
+      <div class="stage" id="stage">
         <div class="box" id="box"></div>
         <div class="box alt" id="box2"></div>
+        <div class="dots" id="dots">
+          <div class="dot"></div>
+          <div class="dot"></div>
+          <div class="dot"></div>
+          <div class="dot"></div>
+          <div class="dot"></div>
+          <div class="dot"></div>
+        </div>
       </div>
 
       <div class="controls">
@@ -138,6 +170,7 @@
         <button id="from">from()</button>
         <button id="fromTo">fromTo()</button>
         <button id="timeline">timeline()</button>
+        <button id="stagger">stagger</button>
         <button id="color">color</button>
         <button id="overwrite">overwrite</button>
         <button id="yoyo">yoyo + repeat</button>

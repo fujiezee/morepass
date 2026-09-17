@@ -43,6 +43,7 @@ const SPECIAL = new Set([
   "onUpdate",
   "onComplete",
   "onRepeat",
+  "stagger",
 ]);
 
 type ResolvedTarget = object | Element;
@@ -60,7 +61,7 @@ export interface TweenHandle extends TweenControls, PropOwner {
   takeDelay(): number;
 }
 
-function resolveTargets(target: Target | Target[]): ResolvedTarget[] {
+export function resolveTargets(target: Target | Target[]): ResolvedTarget[] {
   const list = Array.isArray(target) ? target : [target];
   const out: ResolvedTarget[] = [];
 
@@ -566,26 +567,6 @@ export function createTweenHandle(
 
   if (options.autoPlay !== false) tween.play();
   return tween;
-}
-
-export function to(target: Target | Target[], vars: Vars): TweenControls {
-  return createTweenHandle(target, null, vars, "to");
-}
-
-export function from(target: Target | Target[], vars: Vars): TweenControls {
-  return createTweenHandle(target, vars, vars, "from");
-}
-
-export function fromTo(
-  target: Target | Target[],
-  fromVars: Vars,
-  toVars: Vars,
-): TweenControls {
-  return createTweenHandle(target, fromVars, toVars, "fromTo");
-}
-
-export function set(target: Target | Target[], vars: Vars): TweenControls {
-  return to(target, { ...vars, duration: 0, ease: "none" });
 }
 
 export function isTweenHandle(value: unknown): value is TweenHandle {

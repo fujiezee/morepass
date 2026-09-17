@@ -1,19 +1,28 @@
 import MorePass, { type TweenControls } from "../src";
 
+const stage = document.querySelector<HTMLElement>("#stage")!;
 const box = document.querySelector<HTMLElement>("#box")!;
 const box2 = document.querySelector<HTMLElement>("#box2")!;
+const dots = [
+  ...document.querySelectorAll<HTMLElement>("#dots .dot"),
+];
 const code = document.querySelector<HTMLElement>("#code")!;
 
 let current: TweenControls | null = null;
 
 function resetBoxes() {
   current?.kill();
+  stage.classList.remove("show-dots");
   box.style.cssText =
     "position:absolute;top:100px;left:40px;width:72px;height:72px;background:linear-gradient(145deg, #3ecf8e, #1f8f5f);";
   box2.style.cssText =
     "position:absolute;top:100px;left:40px;width:72px;height:72px;opacity:0.2;background:linear-gradient(145deg, #f0c14a, #b8891f);";
   MorePass.set(box, { x: 0, y: 0, scale: 1, rotation: 0, opacity: 1 });
   MorePass.set(box2, { x: 0, y: 0, scale: 0.6, rotation: 0, opacity: 0.2 });
+  for (const dot of dots) {
+    dot.style.cssText = "width:28px;height:28px;background:#3ecf8e;opacity:0.25;";
+    MorePass.set(dot, { y: 0, scale: 1, opacity: 0.25 });
+  }
 }
 
 function show(snippet: string) {
@@ -80,7 +89,11 @@ document.querySelector("#timeline")!.addEventListener("click", () => {
   .to([box, box2], { rotation: 0, y: 0, scale: 1, duration: 0.5 })`);
   current = MorePass.timeline()
     .to(box, { x: 420, rotation: 90, duration: 0.7, ease: "power2.out" })
-    .to(box2, { x: 280, opacity: 1, scale: 1, duration: 0.6, ease: "power2.out" }, "-=0.35")
+    .to(
+      box2,
+      { x: 280, opacity: 1, scale: 1, duration: 0.6, ease: "power2.out" },
+      "-=0.35",
+    )
     .to(box, { y: -40, scale: 1.15, duration: 0.4, ease: "sine.inOut" }, "<0.1")
     .to([box, box2], {
       rotation: 0,
@@ -89,6 +102,24 @@ document.querySelector("#timeline")!.addEventListener("click", () => {
       duration: 0.5,
       ease: "power2.inOut",
     });
+});
+
+document.querySelector("#stagger")!.addEventListener("click", () => {
+  resetBoxes();
+  stage.classList.add("show-dots");
+  show(`MorePass.to(".dot", {
+  y: -48, scale: 1.35, opacity: 1,
+  duration: 0.45, ease: "back.out",
+  stagger: { each: 0.08, from: "center" }
+})`);
+  current = MorePass.to(dots, {
+    y: -48,
+    scale: 1.35,
+    opacity: 1,
+    duration: 0.45,
+    ease: "back.out",
+    stagger: { each: 0.08, from: "center" },
+  });
 });
 
 document.querySelector("#color")!.addEventListener("click", () => {

@@ -29,6 +29,16 @@ export type EaseName =
 
 export type Target = object | Element | string;
 
+export type StaggerFrom = "start" | "end" | "center" | "edges" | number;
+
+export type StaggerVars = {
+  /** Delay between consecutive items (default when stagger is a number). */
+  each?: number;
+  /** Total time span to distribute across items (overrides `each`). */
+  amount?: number;
+  from?: StaggerFrom;
+};
+
 export type Vars = Record<string, unknown> & {
   duration?: number;
   delay?: number;
@@ -38,6 +48,7 @@ export type Vars = Record<string, unknown> & {
   immediateRender?: boolean;
   /** Default `"auto"` — only conflicting props. `true` kills whole prior tweens. */
   overwrite?: boolean | "auto";
+  stagger?: number | StaggerVars;
   onStart?: () => void;
   onUpdate?: () => void;
   onComplete?: () => void;
