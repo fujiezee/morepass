@@ -1,12 +1,25 @@
 # MorePass
 
-A small, modern tween library — GSAP-inspired API without the weight.
+A small, modern tween library — GSAP-inspired API, built so **AI agents can learn it fast**.
 
-**v0.2.0** · TypeScript · timeline · stagger · ScrollTrigger · matchMedia · utils
+**v0.3.0** · TypeScript · timeline · keyframes · quickTo · stagger · ScrollTrigger · matchMedia · utils
 
 ```bash
 npm install morepass
 ```
+
+## For AI agents (start here)
+
+Copy or open the Agent Skill — one file is enough to use the full API:
+
+- [`skills/morepass/SKILL.md`](skills/morepass/SKILL.md) — decision tree, recipes, GSAP cheat sheet
+- [`skills/morepass/examples.md`](skills/morepass/examples.md) — extra patterns
+
+Host mirrors (same content): `.agents/skills/morepass/`, `.cursor/skills/morepass/`, `.claude/skills/morepass/`.
+
+When animating in a project that depends on `morepass`, **read that Skill first** instead of inventing RAF/CSS keyframe loops.
+
+## Quick start
 
 ```ts
 import MorePass from "morepass"
@@ -30,8 +43,11 @@ MorePass.timeline()
 |---|---|
 | `to` / `from` / `fromTo` / `set` | Core tweens |
 | `timeline()` | Sequencing, labels, `+=` / `-=` / `<` / `>` |
+| `keyframes` | Array or `"0%"` / `"50%"` / `"100%"` maps |
+| `quickTo` | Fast property retarget (pointer follow) |
+| `paused` + `progress` / `seek` | Scrub UIs without nested scroll |
 | `stagger` | `0.1` or `{ each, amount, from }` + function values |
-| `scrollTrigger` | scrub, once, pin, toggleActions, callbacks |
+| `scrollTrigger` | scrub, once, pin, toggleActions, custom scroller |
 | `matchMedia()` | responsive animation contexts |
 | `utils` | clamp, mapRange, interpolate, snap, random |
 | Transforms | `x y scale rotation …` via shared transform bag |
@@ -50,6 +66,9 @@ MorePass.to(".box", {
     once: true,
   },
 })
+
+const setX = MorePass.quickTo(".dot", "x", { duration: 0.35 })
+setX(240)
 
 MorePass.matchMedia({
   "(min-width: 800px)": () => {

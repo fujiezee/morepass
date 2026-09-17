@@ -1,0 +1,9 @@
+{
+  "status": "accepted",
+  "feature": "001-ai-skill",
+  "verification": {
+    "commands": ["npm test", "npm run build"],
+    "result": "41 tests passed; build ok"
+  },
+  "notes": "skills/morepass shipped; mirrored to .agents/.cursor/.claude; README AI entry"
+}

@@ -1,6 +1,4 @@
 {
-  "featureDir": ".duaer/specs/055-release-015",
-  "branch": "feat/release-015",
-  "worktree": ".worktree/feat-release-015",
-  "status": "active"
+  "feature": "001-ai-skill",
+  "title": "AI-first MorePass Skill"
 }
