@@ -36,8 +36,11 @@ const quickDot = document.querySelector<HTMLElement>("#quick-dot")!;
 const codeEl = document.querySelector<HTMLElement>("#code")!;
 const statusEl = document.querySelector<HTMLElement>("#status")!;
 const brand = document.querySelector<HTMLElement>("#brand")!;
+const brandGlow = document.querySelector<HTMLElement>("#brand-glow")!;
 const stage = document.querySelector<HTMLElement>("#stage")!;
+const stageBeam = document.querySelector<HTMLElement>("#stage-beam")!;
 const controlsEl = document.querySelector<HTMLElement>("#controls")!;
+const aurora = document.querySelector<HTMLElement>("#aurora")!;
 const orbA = document.querySelector<HTMLElement>("#orb-a")!;
 const orbB = document.querySelector<HTMLElement>("#orb-b")!;
 const orbC = document.querySelector<HTMLElement>("#orb-c")!;
@@ -45,6 +48,9 @@ const dots = [...document.querySelectorAll<HTMLElement>("#dots .dot")];
 const panels = [...document.querySelectorAll<HTMLElement>(".panel")];
 const buttons = [
   ...document.querySelectorAll<HTMLButtonElement>("#controls [data-demo]"),
+];
+const controlButtons = [
+  ...document.querySelectorAll<HTMLButtonElement>("#controls button"),
 ];
 
 let current: TweenControls | null = null;
@@ -732,9 +738,39 @@ document.querySelector("#reset")!.addEventListener("click", () => {
 });
 
 function bootAtmosphere() {
+  MorePass.set(aurora, { x: -80, opacity: 0.4 });
+  MorePass.to(aurora, {
+    x: 180,
+    opacity: 0.7,
+    duration: 9,
+    ease: "sine.inOut",
+    yoyo: true,
+    repeat: -1,
+  });
+
+  MorePass.set(stageBeam, { x: -40, opacity: 0.2 });
+  MorePass.to(stageBeam, {
+    x: 420,
+    opacity: 0.55,
+    duration: 4.8,
+    ease: "sine.inOut",
+    yoyo: true,
+    repeat: -1,
+  });
+
+  MorePass.to(brandGlow, {
+    scale: 1.18,
+    opacity: 0.75,
+    duration: 3.2,
+    ease: "sine.inOut",
+    yoyo: true,
+    repeat: -1,
+  });
+
   MorePass.to(orbA, {
     y: 40,
     x: 30,
+    scale: 1.12,
     duration: 6,
     ease: "sine.inOut",
     yoyo: true,
@@ -743,6 +779,7 @@ function bootAtmosphere() {
   MorePass.to(orbB, {
     y: -50,
     x: -24,
+    scale: 1.08,
     duration: 7.5,
     ease: "sine.inOut",
     yoyo: true,
@@ -751,6 +788,7 @@ function bootAtmosphere() {
   MorePass.to(orbC, {
     y: 28,
     x: -36,
+    scale: 1.15,
     duration: 5.5,
     ease: "sine.inOut",
     yoyo: true,
@@ -759,32 +797,51 @@ function bootAtmosphere() {
 }
 
 function bootIntro() {
-  MorePass.set(brand, { y: 36, opacity: 0 });
+  MorePass.set(brand, { y: 42, opacity: 0, scale: 0.94 });
   MorePass.set(controlsEl, { y: 22, opacity: 0 });
   MorePass.set(stage, { y: 28, opacity: 0 });
   MorePass.set(codeEl, { y: 18, opacity: 0 });
   MorePass.set(statusEl, { opacity: 0 });
+  MorePass.set(controlButtons, { opacity: 0, y: 10 });
 
   MorePass.timeline()
-    .to(brand, { y: 0, opacity: 1, duration: 0.75, ease: "power3.out" })
+    .to(brand, {
+      y: 0,
+      opacity: 1,
+      scale: 1,
+      duration: 0.85,
+      ease: "power3.out",
+    })
+    .to(
+      controlButtons,
+      {
+        opacity: 1,
+        y: 0,
+        duration: 0.45,
+        ease: "power2.out",
+        stagger: 0.018,
+      },
+      "-=0.35",
+    )
     .to(
       controlsEl,
-      { y: 0, opacity: 1, duration: 0.55, ease: "power2.out" },
-      "-=0.4",
+      { y: 0, opacity: 1, duration: 0.2, ease: "power1.out" },
+      "<",
     )
     .to(
       stage,
-      { y: 0, opacity: 1, duration: 0.6, ease: "power2.out" },
-      "-=0.28",
+      { y: 0, opacity: 1, duration: 0.65, ease: "power2.out" },
+      "-=0.35",
     )
     .to(
       [codeEl, statusEl],
       { y: 0, opacity: 1, duration: 0.45, ease: "power2.out" },
-      "-=0.22",
+      "-=0.28",
     )
     .call(() => {
-      MorePass.set(brand, { opacity: 1, y: 0 });
+      MorePass.set(brand, { opacity: 1, y: 0, scale: 1 });
       MorePass.set(controlsEl, { opacity: 1, y: 0 });
+      MorePass.set(controlButtons, { opacity: 1, y: 0 });
       MorePass.set(stage, { opacity: 1, y: 0 });
       introDone = true;
       runDemo("to");

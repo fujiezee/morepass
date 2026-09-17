@@ -1,0 +1,11 @@
+{
+  "status": "accepted",
+  "feature": "005-demo-spectacle",
+  "verification": {
+    "levels": ["L4-browser"],
+    "commands": [
+      "IDE browser: load http://127.0.0.1:5173 after intro — brand, controls, stage, code all opacity 1; to() demo glowing box visible"
+    ],
+    "waiver": "Demo HTML/CSS/motion only; no core API. Project L3 (test:live) targets live desk, not this playground."
+  }
+}
