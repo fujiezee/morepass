@@ -2,7 +2,7 @@
 
 ## Goal
 
-Grow MorePass toward the GSAP APIs AI reaches for most when wiring real UIs:
+Grow MorePass toward the motion APIs AI reaches for most when wiring real UIs:
 scoped cleanup, kill-by-target, property readback, autoAlpha, and timeScale.
 
 ## Assumptions (ask was “能力进化”)
@@ -23,7 +23,7 @@ Ship one coherent API slice; skip Flip / SplitText / Draggable.
 ## Out of scope
 
 - Flip, SplitText, MorphSVG, Draggable
-- Full GSAP ScrollTrigger parity beyond current surface
+- ScrollTrigger feature depth beyond scrub / once / pin / toggleActions / custom scroller
 - npm publish / push unless asked
 
 ## Acceptance

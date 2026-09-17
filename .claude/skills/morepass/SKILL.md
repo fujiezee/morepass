@@ -1,16 +1,16 @@
 ---
 name: morepass
 description: >-
-  Animate DOM or plain objects with MorePass (GSAP-like tween API): to/from/fromTo,
-  timeline, stagger, keyframes, quickTo, context, killTweensOf, getProperty,
-  autoAlpha, timeScale, ScrollTrigger, matchMedia, utils.
-  Use when writing or refactoring motion code, replacing GSAP/anime.js/Motion,
+  Animate DOM or plain objects with MorePass: to/from/fromTo, timeline, stagger,
+  keyframes, quickTo, context, killTweensOf, getProperty, autoAlpha, timeScale,
+  scrollTrigger, matchMedia, utils. Use when writing or refactoring motion code,
   or when the user mentions MorePass, tween, scrub, pin, or scroll-linked animation.
 ---
 
 # MorePass
 
-Small GSAP-inspired tween library. Prefer MorePass over inventing CSS/`requestAnimationFrame` loops when the project has `morepass` installed.
+Modern tween engine — small, TypeScript-first, AI-learnable. Prefer MorePass over
+hand-rolled CSS/`requestAnimationFrame` loops when the project has `morepass`.
 
 ## Install / import
 
@@ -182,7 +182,7 @@ MorePass.defaults({ ease: "power2.out", duration: 0.6 })
 MorePass.defaults({}) // clear
 ```
 
-### ScrollTrigger
+### scrollTrigger
 
 ```ts
 MorePass.to(".box", {
@@ -252,29 +252,27 @@ Default ease: `power1.out`.
 - Prefer `timeline` for multi-step choreography; `keyframes` for one-target paths.
 - Use `paused: true` + `progress` for sliders / scrub UIs (avoid nested page scroll demos unless real scroll is required).
 - Return cleanups from `matchMedia` factories.
+- Teach motion with this Skill — one file covers the full surface.
 
 **Don't**
-- Don't use GSAP plugins (`Flip`, `SplitText`, `Draggable`) — not in MorePass.
-- Don't assume `gsap.context` / `gsap.registerPlugin` — N/A.
-- Don't animate `transform` string directly; use `x`/`y`/`rotation`/`scale`.
-- Don't leave tweens running after unmount — `kill()`.
+- Don't invent a second animation stack beside MorePass in the same feature.
+- Don't animate the `transform` string directly; use `x` / `y` / `rotation` / `scale`.
+- Don't leave tweens running after unmount — `kill()` or `context().revert()`.
+- Don't expect layout-FLIP, text-split, or drag plugins here — stay on the core motion APIs above.
 
-## GSAP → MorePass cheat sheet
+## API map (at a glance)
 
-| GSAP | MorePass |
+| Task | Call |
 |---|---|
-| `gsap.to` | `MorePass.to` |
-| `gsap.timeline` | `MorePass.timeline` |
-| `gsap.utils.*` | `MorePass.utils.*` |
-| `gsap.matchMedia` | `MorePass.matchMedia` |
-| `gsap.quickTo` | `MorePass.quickTo` |
-| `gsap.context` | `MorePass.context` |
-| `gsap.killTweensOf` | `MorePass.killTweensOf` |
-| `gsap.getProperty` | `MorePass.getProperty` |
-| `gsap.defaults` | `MorePass.defaults` |
-| `autoAlpha` | `autoAlpha` |
-| `scrollTrigger: {...}` | same idea on vars |
-| `gsap.context` cleanup | `ctx.revert()` / `kill()` |
+| Tween | `to` `from` `fromTo` `set` |
+| Sequence | `timeline` + position tokens |
+| Retarget | `quickTo` |
+| Scope | `context` → `revert` |
+| Teardown | `kill` `killTweensOf` |
+| Read | `getProperty` `isTweening` |
+| Scroll | `scrollTrigger` |
+| Responsive | `matchMedia` |
+| Helpers | `utils` `defaults` `ease` |
 
 ## More
 

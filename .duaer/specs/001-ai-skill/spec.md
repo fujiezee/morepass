@@ -6,7 +6,7 @@ Ship an Agent Skill so any AI that opens `skills/morepass/SKILL.md` can use More
 
 ## In scope
 
-- Author `skills/morepass/SKILL.md` + `examples.md` (recipes, decision tree, GSAP cheat sheet)
+- Author `skills/morepass/SKILL.md` + `examples.md` (recipes, decision tree, API map)
 - Mirror into `.agents/skills/morepass/`, `.cursor/skills/morepass/`, `.claude/skills/morepass/`
 - Point README at the Skill; bump library narrative to v0.3.0 (keyframes, quickTo, paused scrub)
 - Keep prior API work (keyframes / quickTo / expand-in-place demo) on this branch

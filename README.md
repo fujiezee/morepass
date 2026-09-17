@@ -1,8 +1,8 @@
 # MorePass
 
-A small, modern tween library — GSAP-inspired API, built so **AI agents can learn it fast**.
+A small, modern tween library — built so **AI agents learn it in one Skill**, and humans ship motion without fighting the stack.
 
-**v0.4.0** · TypeScript · timeline · keyframes · quickTo · context · killTweensOf · getProperty · autoAlpha · timeScale · stagger · ScrollTrigger · matchMedia · utils
+**v0.4.0** · TypeScript · timeline · keyframes · quickTo · context · killTweensOf · getProperty · autoAlpha · timeScale · stagger · scrollTrigger · matchMedia · utils
 
 ```bash
 npm install morepass
@@ -12,7 +12,7 @@ npm install morepass
 
 Copy or open the Agent Skill — one file is enough to use the full API:
 
-- [`skills/morepass/SKILL.md`](skills/morepass/SKILL.md) — decision tree, recipes, GSAP cheat sheet
+- [`skills/morepass/SKILL.md`](skills/morepass/SKILL.md) — decision tree, recipes, API map
 - [`skills/morepass/examples.md`](skills/morepass/examples.md) — extra patterns
 
 Host mirrors (same content): `.agents/skills/morepass/`, `.cursor/skills/morepass/`, `.claude/skills/morepass/`.

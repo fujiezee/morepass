@@ -109,4 +109,4 @@ function leave() {
 
 - No timeline visual editor
 - No text splitting / morph SVG / physics plugins
-- ScrollTrigger covers scrub / once / pin / toggleActions / custom scroller — not the full GSAP plugin surface
+- `scrollTrigger` covers scrub / once / pin / toggleActions / custom scroller — keep demos on that surface

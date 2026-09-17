@@ -1,7 +1,7 @@
 {
   "name": "morepass",
   "version": "0.4.0",
-  "description": "MorePass — a small, modern tween library",
+  "description": "MorePass — modern TypeScript tween engine. AI-learnable. Timeline, scrub, scroll, context.",
   "type": "module",
   "main": "./dist/morepass.cjs",
   "module": "./dist/morepass.js",
@@ -44,9 +44,10 @@
     "animation",
     "tween",
     "motion",
-    "gsap",
-    "scrolltrigger",
-    "timeline"
+    "timeline",
+    "scroll",
+    "scrub",
+    "typescript"
   ],
   "license": "MIT",
   "devDependencies": {
