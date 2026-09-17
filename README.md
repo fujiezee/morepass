@@ -2,7 +2,7 @@
 
 A small, modern tween library — GSAP-inspired API without the weight.
 
-**gzip ≈ 7KB** · TypeScript · timeline · overwrite · colors
+**v0.2.0** · TypeScript · timeline · stagger · ScrollTrigger · matchMedia · utils
 
 ```bash
 npm install morepass
@@ -31,11 +31,12 @@ MorePass.timeline()
 | `to` / `from` / `fromTo` / `set` | Core tweens |
 | `timeline()` | Sequencing, labels, `+=` / `-=` / `<` / `>` |
 | `stagger` | `0.1` or `{ each, amount, from }` + function values |
-| `scrollTrigger` | scrub / toggleActions / onEnter… (GSAP-style) |
+| `scrollTrigger` | scrub, once, pin, toggleActions, callbacks |
+| `matchMedia()` | responsive animation contexts |
+| `utils` | clamp, mapRange, interpolate, snap, random |
 | Transforms | `x y scale rotation …` via shared transform bag |
-| Colors | hex / rgb(a) / named → `backgroundColor`, `color`, … |
-| Overwrite | default `"auto"` — only conflicting props |
-| Playback | `play pause seek progress kill reverse restart` |
+| Colors | hex / rgb(a) / named |
+| Overwrite | default `"auto"` |
 
 ```ts
 MorePass.to(".box", {
@@ -45,10 +46,18 @@ MorePass.to(".box", {
     start: "top 80%",
     end: "bottom 20%",
     scrub: true,
+    pin: true,
+    once: true,
+  },
+})
+
+MorePass.matchMedia({
+  "(min-width: 800px)": () => {
+    const tw = MorePass.to(".hero", { x: 100, duration: 1 })
+    return () => tw.kill()
   },
 })
 ```
-
 
 ## Develop
 
@@ -59,7 +68,7 @@ npm test
 npm run build
 ```
 
-This repo uses [duaer-spec](https://www.npmjs.com/package/duaer-spec) for agent delivery workflow (`npx duaer-spec update`).
+This repo uses [duaer-spec](https://www.npmjs.com/package/duaer-spec) for agent delivery workflow.
 
 ## License
 

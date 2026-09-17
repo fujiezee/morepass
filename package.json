@@ -1,6 +1,6 @@
 {
   "name": "morepass",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "MorePass — a small, modern tween library",
   "type": "module",
   "main": "./dist/morepass.cjs",
@@ -24,7 +24,8 @@
     "test:watch": "vitest",
     "preview": "vite preview",
     "duaer": "duaer-spec",
-    "duaer:update": "duaer-spec update"
+    "duaer:update": "duaer-spec update",
+    "prepublishOnly": "npm test && npm run build"
   },
   "repository": {
     "type": "git",
@@ -41,7 +42,10 @@
     "morepass",
     "animation",
     "tween",
-    "motion"
+    "motion",
+    "gsap",
+    "scrolltrigger",
+    "timeline"
   ],
   "license": "MIT",
   "devDependencies": {

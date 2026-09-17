@@ -50,6 +50,8 @@ function armScrollDemo() {
       start: "top 80%",
       end: "bottom 20%",
       scrub: true,
+      pin: scrollBox,
+      pinSpacing: false,
     },
   });
 }

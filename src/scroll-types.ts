@@ -9,8 +9,12 @@ export type ScrollTriggerVars = {
   end?: string;
   /** Link animation progress to scroll. `true` or lag seconds (smoothed). */
   scrub?: boolean | number;
-  /** Fire onEnter only once. */
+  /** Run enter once; ignore reverse / enterBack after completion. */
   once?: boolean;
+  /** Pin the trigger (or a given element) while between start and end. */
+  pin?: boolean | Target | Element;
+  /** Insert spacer while pinned (default true). */
+  pinSpacing?: boolean;
   /**
    * onEnter onLeave onEnterBack onLeaveBack
    * Actions: play | pause | resume | reset | restart | complete | reverse | none

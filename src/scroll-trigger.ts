@@ -57,7 +57,10 @@ function resolveElement(target: Target | Element | undefined): Element | null {
   return first instanceof Element ? first : null;
 }
 
-function parsePart(part: string): { kind: "top" | "center" | "bottom" | "pct"; pct?: number } {
+function parsePart(part: string): {
+  kind: "top" | "center" | "bottom" | "pct";
+  pct?: number;
+} {
   const p = part.trim().toLowerCase();
   if (p === "top") return { kind: "top" };
   if (p === "center" || p === "centre" || p === "middle") return { kind: "center" };
@@ -156,6 +159,23 @@ function parseToggleActions(raw?: string): [Action, Action, Action, Action] {
   ];
 }
 
+interface PinState {
+  el: HTMLElement;
+  spacer: HTMLElement | null;
+  saved: {
+    position: string;
+    top: string;
+    left: string;
+    width: string;
+    zIndex: string;
+  };
+  pinTop: number;
+  pinLeft: number;
+  width: number;
+  height: number;
+  active: boolean;
+}
+
 class ScrollTrigger implements ScrollTriggerInstance {
   private triggerEl: Element | null = null;
   private startScroll = 0;
@@ -166,10 +186,12 @@ class ScrollTrigger implements ScrollTriggerInstance {
   private prevProgress = -1;
   private killed = false;
   private enteredOnce = false;
+  private completedOnce = false;
   private scrubSmooth = 0;
   private scrubTarget = 0;
   private scrubRaf = 0;
   private markers: HTMLElement[] = [];
+  private pin: PinState | null = null;
   private readonly actions: [Action, Action, Action, Action];
   private readonly vars: ScrollTriggerVars;
   private readonly animation?: TweenControls;
@@ -180,15 +202,11 @@ class ScrollTrigger implements ScrollTriggerInstance {
     this.actions = parseToggleActions(vars.toggleActions);
     this.scrubSmooth = typeof vars.scrub === "number" ? vars.scrub : 0;
 
-    if (vars.scrub) {
-      this.animation?.pause();
-      this.animation?.progress(0);
-    } else {
-      // wait for trigger unless already past start
-      this.animation?.pause();
-    }
+    this.animation?.pause();
+    if (vars.scrub) this.animation?.progress(0);
 
     this.triggerEl = resolveElement(vars.trigger);
+    this.setupPin();
     this.refresh();
     instances.add(this);
     ensureListeners();
@@ -217,6 +235,11 @@ class ScrollTrigger implements ScrollTriggerInstance {
 
   refresh() {
     if (this.killed || typeof window === "undefined") return;
+
+    // Temporarily unpin to measure natural layout
+    const wasPinned = this.pin?.active;
+    if (wasPinned) this.applyPin(false, "before");
+
     const el = this.triggerEl;
     if (!el) {
       this.startScroll = 0;
@@ -240,13 +263,33 @@ class ScrollTrigger implements ScrollTriggerInstance {
       this.endScroll = this.startScroll + 1;
     }
 
+    if (this.pin) {
+      const pinRect = this.pin.el.getBoundingClientRect();
+      this.pin.pinTop = pinRect.top;
+      this.pin.pinLeft = pinRect.left;
+      this.pin.width = pinRect.width;
+      this.pin.height = pinRect.height;
+      if (this.pin.spacer && this.vars.pinSpacing !== false) {
+        const distance = this.endScroll - this.startScroll;
+        this.pin.spacer.style.height = `${this.pin.height + distance}px`;
+      }
+    }
+
     this.renderMarkers();
+    if (wasPinned) this.update();
   }
 
   update() {
     if (this.killed || typeof window === "undefined") return;
+
+    if (this.completedOnce && this.vars.once) {
+      if (this.vars.scrub) this.animation?.progress(1);
+      return;
+    }
+
     const scrollY = window.scrollY || window.pageYOffset || 0;
-    const raw = (scrollY - this.startScroll) / (this.endScroll - this.startScroll);
+    const raw =
+      (scrollY - this.startScroll) / (this.endScroll - this.startScroll);
     const next = clamp01(raw);
     const prev = this.prevProgress;
 
@@ -257,12 +300,9 @@ class ScrollTrigger implements ScrollTriggerInstance {
     this._isActive = next > 0 && next < 1;
     this._progress = next;
 
-    // Callbacks / toggleActions based on crossing thresholds
     if (prev < 0) {
-      // first paint
-      if (next > 0 && next < 1) {
-        this.fireEnter(false);
-      } else if (next >= 1) {
+      if (next > 0 && next < 1) this.fireEnter(false);
+      else if (next >= 1) {
         this.fireEnter(false);
         this.fireLeave(false);
       }
@@ -273,8 +313,13 @@ class ScrollTrigger implements ScrollTriggerInstance {
       if (prev > 0 && next <= 0) this.fireLeave(true);
     }
 
-    if (wasActive !== this._isActive) {
-      this.vars.onToggle?.(this);
+    if (wasActive !== this._isActive) this.vars.onToggle?.(this);
+
+    // Pin state
+    if (this.pin) {
+      if (next <= 0) this.applyPin(false, "before");
+      else if (next >= 1) this.applyPin(false, "after");
+      else this.applyPin(true);
     }
 
     if (this.vars.scrub) {
@@ -286,8 +331,8 @@ class ScrollTrigger implements ScrollTriggerInstance {
     this.vars.onUpdate?.(this);
     this.prevProgress = next;
 
-    if (this.vars.once && this.enteredOnce && next >= 1) {
-      // keep completed state; optionally kill listeners for this instance later
+    if (this.vars.once && next >= 1) {
+      this.completedOnce = true;
     }
   }
 
@@ -296,12 +341,104 @@ class ScrollTrigger implements ScrollTriggerInstance {
     this.killed = true;
     instances.delete(this);
     if (this.scrubRaf) cancelAnimationFrame(this.scrubRaf);
+    this.teardownPin();
     for (const m of this.markers) m.remove();
     this.markers = [];
     teardownListeners();
   }
 
+  private setupPin() {
+    if (!this.vars.pin || typeof document === "undefined") return;
+    const pinTarget =
+      this.vars.pin === true
+        ? this.triggerEl
+        : resolveElement(this.vars.pin as Target | Element);
+    if (!(pinTarget instanceof HTMLElement)) return;
+
+    const spacer =
+      this.vars.pinSpacing === false ? null : document.createElement("div");
+    if (spacer) {
+      spacer.className = "morepass-pin-spacer";
+      spacer.style.cssText =
+        "display:block;position:relative;width:100%;pointer-events:none;";
+      pinTarget.parentNode?.insertBefore(spacer, pinTarget);
+    }
+
+    this.pin = {
+      el: pinTarget,
+      spacer,
+      saved: {
+        position: pinTarget.style.position,
+        top: pinTarget.style.top,
+        left: pinTarget.style.left,
+        width: pinTarget.style.width,
+        zIndex: pinTarget.style.zIndex,
+      },
+      pinTop: 0,
+      pinLeft: 0,
+      width: 0,
+      height: 0,
+      active: false,
+    };
+  }
+
+  private applyPin(active: boolean, rest: "before" | "after" = "before") {
+    const pin = this.pin;
+    if (!pin) return;
+
+    if (active) {
+      if (pin.active) return;
+      const rect = pin.el.getBoundingClientRect();
+      pin.pinTop = rect.top;
+      pin.pinLeft = rect.left;
+      pin.width = rect.width;
+      pin.height = rect.height;
+      pin.el.style.position = "fixed";
+      pin.el.style.top = `${pin.pinTop}px`;
+      pin.el.style.left = `${pin.pinLeft}px`;
+      pin.el.style.width = `${pin.width}px`;
+      pin.el.style.zIndex = pin.el.style.zIndex || "10";
+      pin.active = true;
+      return;
+    }
+
+    if (!pin.active && rest === "before") {
+      // ensure natural flow
+      pin.el.style.position = pin.saved.position;
+      pin.el.style.top = pin.saved.top;
+      pin.el.style.left = pin.saved.left;
+      pin.el.style.width = pin.saved.width;
+      pin.el.style.zIndex = pin.saved.zIndex;
+      return;
+    }
+
+    // after pin range: place as absolute within flow using spacer offset
+    pin.active = false;
+    if (rest === "after") {
+      const distance = this.endScroll - this.startScroll;
+      pin.el.style.position = "relative";
+      pin.el.style.top = `${distance}px`;
+      pin.el.style.left = pin.saved.left;
+      pin.el.style.width = pin.saved.width;
+      pin.el.style.zIndex = pin.saved.zIndex;
+    } else {
+      pin.el.style.position = pin.saved.position;
+      pin.el.style.top = pin.saved.top;
+      pin.el.style.left = pin.saved.left;
+      pin.el.style.width = pin.saved.width;
+      pin.el.style.zIndex = pin.saved.zIndex;
+    }
+  }
+
+  private teardownPin() {
+    if (!this.pin) return;
+    this.applyPin(false, "before");
+    this.pin.spacer?.remove();
+    this.pin = null;
+  }
+
   private fireEnter(back: boolean) {
+    if (this.vars.once && back) return;
     if (this.vars.once && this.enteredOnce && !back) return;
     if (!back) this.enteredOnce = true;
     if (this.vars.scrub) return;
@@ -315,13 +452,18 @@ class ScrollTrigger implements ScrollTriggerInstance {
   }
 
   private fireLeave(back: boolean) {
-    if (this.vars.scrub) return;
+    if (this.vars.once && back) return;
+    if (this.vars.scrub) {
+      if (!back && this.vars.once) this.completedOnce = true;
+      return;
+    }
     if (back) {
       applyAction(this.animation, this.actions[3]);
       this.vars.onLeaveBack?.(this);
     } else {
       applyAction(this.animation, this.actions[1]);
       this.vars.onLeave?.(this);
+      if (this.vars.once) this.completedOnce = true;
     }
   }
 
