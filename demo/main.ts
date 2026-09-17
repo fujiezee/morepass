@@ -56,6 +56,7 @@ let kfTween: TweenControls | null = null;
 let setQuickX: ((v: number) => TweenControls) | null = null;
 let setQuickY: ((v: number) => TweenControls) | null = null;
 let demoCtx: ReturnType<typeof context> | null = null;
+let introDone = false;
 
 function status(text: string) {
   statusEl.textContent = text;
@@ -69,12 +70,12 @@ function showPanel(id: string) {
   for (const panel of panels) {
     panel.classList.toggle("active", panel.id === id);
   }
-  MorePass.from(stage, {
-    opacity: 0.35,
-    y: 10,
-    duration: 0.35,
-    ease: "power2.out",
-  });
+  if (!introDone) return;
+  MorePass.fromTo(
+    stage,
+    { opacity: 0.55, y: 8 },
+    { opacity: 1, y: 0, duration: 0.32, ease: "power2.out" },
+  );
 }
 
 function setActiveButton(name: string) {
@@ -758,30 +759,37 @@ function bootAtmosphere() {
 }
 
 function bootIntro() {
-  MorePass.set(brand, { y: 28, opacity: 0 });
-  MorePass.set(controlsEl, { y: 18, opacity: 0 });
-  MorePass.set(stage, { y: 24, opacity: 0 });
-  MorePass.set(codeEl, { y: 16, opacity: 0 });
+  MorePass.set(brand, { y: 36, opacity: 0 });
+  MorePass.set(controlsEl, { y: 22, opacity: 0 });
+  MorePass.set(stage, { y: 28, opacity: 0 });
+  MorePass.set(codeEl, { y: 18, opacity: 0 });
+  MorePass.set(statusEl, { opacity: 0 });
 
   MorePass.timeline()
-    .to(brand, { y: 0, opacity: 1, duration: 0.7, ease: "power3.out" })
+    .to(brand, { y: 0, opacity: 1, duration: 0.75, ease: "power3.out" })
     .to(
       controlsEl,
       { y: 0, opacity: 1, duration: 0.55, ease: "power2.out" },
-      "-=0.35",
+      "-=0.4",
     )
     .to(
       stage,
-      { y: 0, opacity: 1, duration: 0.65, ease: "power2.out" },
-      "-=0.3",
+      { y: 0, opacity: 1, duration: 0.6, ease: "power2.out" },
+      "-=0.28",
     )
     .to(
-      codeEl,
+      [codeEl, statusEl],
       { y: 0, opacity: 1, duration: 0.45, ease: "power2.out" },
-      "-=0.25",
-    );
+      "-=0.22",
+    )
+    .call(() => {
+      MorePass.set(brand, { opacity: 1, y: 0 });
+      MorePass.set(controlsEl, { opacity: 1, y: 0 });
+      MorePass.set(stage, { opacity: 1, y: 0 });
+      introDone = true;
+      runDemo("to");
+    });
 }
 
 bootAtmosphere();
 bootIntro();
-runDemo("to");
