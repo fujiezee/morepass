@@ -44,6 +44,7 @@ const SPECIAL = new Set([
   "onComplete",
   "onRepeat",
   "stagger",
+  "scrollTrigger",
 ]);
 
 type ResolvedTarget = object | Element;

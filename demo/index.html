@@ -142,14 +142,41 @@
         font: 0.85rem/1.55 "JetBrains Mono", monospace;
         color: #cfe6d6;
       }
+
+      .scroll-space {
+        height: 70vh;
+      }
+
+      .scroll-section {
+        position: relative;
+        min-height: 60vh;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        margin: 2rem 0 4rem;
+        overflow: hidden;
+      }
+
+      .scroll-section p {
+        margin: 1.25rem;
+        color: var(--muted);
+      }
+
+      #scroll-box {
+        position: absolute;
+        left: 40px;
+        top: 40%;
+        width: 72px;
+        height: 72px;
+        background: linear-gradient(145deg, var(--accent), #1f8f5f);
+      }
     </style>
   </head>
   <body>
     <main>
       <h1 class="brand">MorePass</h1>
       <p class="lede">
-        A small modern tween library — to / from / fromTo, timeline sequencing,
-        transforms, easing, and playback controls.
+        A small modern tween library — tweens, timeline, stagger, scrollTrigger,
+        colors, and overwrite.
       </p>
 
       <div class="stage" id="stage">
@@ -171,6 +198,7 @@
         <button id="fromTo">fromTo()</button>
         <button id="timeline">timeline()</button>
         <button id="stagger">stagger</button>
+        <button id="scroll">scrollTrigger</button>
         <button id="color">color</button>
         <button id="overwrite">overwrite</button>
         <button id="yoyo">yoyo + repeat</button>
@@ -179,6 +207,13 @@
       </div>
 
       <pre id="code"></pre>
+
+      <div class="scroll-space" aria-hidden="true"></div>
+      <section class="scroll-section" id="scroll-section">
+        <p>Scroll this section — the box is scrubbed by ScrollTrigger.</p>
+        <div id="scroll-box"></div>
+      </section>
+      <div class="scroll-space" aria-hidden="true"></div>
     </main>
     <script type="module" src="./main.ts"></script>
   </body>

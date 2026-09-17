@@ -1,17 +1,20 @@
-import MorePass, { type TweenControls } from "../src";
+import MorePass, { scrollTrigger, type TweenControls } from "../src";
 
 const stage = document.querySelector<HTMLElement>("#stage")!;
 const box = document.querySelector<HTMLElement>("#box")!;
 const box2 = document.querySelector<HTMLElement>("#box2")!;
-const dots = [
-  ...document.querySelectorAll<HTMLElement>("#dots .dot"),
-];
+const scrollBox = document.querySelector<HTMLElement>("#scroll-box")!;
+const scrollSection = document.querySelector<HTMLElement>("#scroll-section")!;
+const dots = [...document.querySelectorAll<HTMLElement>("#dots .dot")];
 const code = document.querySelector<HTMLElement>("#code")!;
 
 let current: TweenControls | null = null;
+let scrollReady = false;
 
 function resetBoxes() {
   current?.kill();
+  scrollTrigger.killAll();
+  scrollReady = false;
   stage.classList.remove("show-dots");
   box.style.cssText =
     "position:absolute;top:100px;left:40px;width:72px;height:72px;background:linear-gradient(145deg, #3ecf8e, #1f8f5f);";
@@ -19,14 +22,36 @@ function resetBoxes() {
     "position:absolute;top:100px;left:40px;width:72px;height:72px;opacity:0.2;background:linear-gradient(145deg, #f0c14a, #b8891f);";
   MorePass.set(box, { x: 0, y: 0, scale: 1, rotation: 0, opacity: 1 });
   MorePass.set(box2, { x: 0, y: 0, scale: 0.6, rotation: 0, opacity: 0.2 });
+  MorePass.set(scrollBox, { x: 0, rotation: 0, backgroundColor: "#3ecf8e" });
   for (const dot of dots) {
-    dot.style.cssText = "width:28px;height:28px;background:#3ecf8e;opacity:0.25;";
+    dot.style.cssText =
+      "width:28px;height:28px;background:#3ecf8e;opacity:0.25;";
     MorePass.set(dot, { y: 0, scale: 1, opacity: 0.25 });
   }
 }
 
 function show(snippet: string) {
   code.textContent = snippet.trim();
+}
+
+function armScrollDemo() {
+  if (scrollReady) {
+    scrollTrigger.refresh();
+    return;
+  }
+  scrollReady = true;
+  current = MorePass.to(scrollBox, {
+    x: 520,
+    rotation: 180,
+    backgroundColor: "#f0c14a",
+    ease: "none",
+    scrollTrigger: {
+      trigger: scrollSection,
+      start: "top 80%",
+      end: "bottom 20%",
+      scrub: true,
+    },
+  });
 }
 
 document.querySelector("#to")!.addEventListener("click", () => {
@@ -122,6 +147,22 @@ document.querySelector("#stagger")!.addEventListener("click", () => {
   });
 });
 
+document.querySelector("#scroll")!.addEventListener("click", () => {
+  resetBoxes();
+  show(`MorePass.to(scrollBox, {
+  x: 520, rotation: 180, backgroundColor: "#f0c14a",
+  ease: "none",
+  scrollTrigger: {
+    trigger: "#scroll-section",
+    start: "top 80%",
+    end: "bottom 20%",
+    scrub: true,
+  },
+})`);
+  armScrollDemo();
+  scrollSection.scrollIntoView({ behavior: "smooth", block: "center" });
+});
+
 document.querySelector("#color")!.addEventListener("click", () => {
   resetBoxes();
   show(`MorePass.to(box, {
@@ -185,6 +226,10 @@ document.querySelector("#reset")!.addEventListener("click", () => {
 });
 
 resetBoxes();
+armScrollDemo();
 show(`import MorePass from "morepass"
 
-MorePass.to(".box", { x: 520, duration: 1, ease: "power2.out" })`);
+MorePass.to(".box", {
+  x: 520,
+  scrollTrigger: { start: "top 80%", scrub: true },
+})`);

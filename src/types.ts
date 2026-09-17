@@ -1,3 +1,5 @@
+import type { ScrollTriggerVars } from "./scroll-types";
+
 export type EaseFn = (t: number) => number;
 
 export type EaseName =
@@ -49,6 +51,7 @@ export type Vars = Record<string, unknown> & {
   /** Default `"auto"` — only conflicting props. `true` kills whole prior tweens. */
   overwrite?: boolean | "auto";
   stagger?: number | StaggerVars;
+  scrollTrigger?: ScrollTriggerVars | boolean;
   onStart?: () => void;
   onUpdate?: () => void;
   onComplete?: () => void;

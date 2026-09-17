@@ -1,5 +1,6 @@
 import { set, to, from, fromTo } from "./animate";
 import { ease } from "./ease";
+import { scrollTrigger } from "./scroll-trigger";
 import { timeline } from "./timeline";
 import type {
   EaseFn,
@@ -13,6 +14,10 @@ import type {
   TweenControls,
   Vars,
 } from "./types";
+import type {
+  ScrollTriggerInstance,
+  ScrollTriggerVars,
+} from "./scroll-types";
 
 export type {
   EaseFn,
@@ -25,6 +30,8 @@ export type {
   TimelineVars,
   TweenControls,
   Vars,
+  ScrollTriggerInstance,
+  ScrollTriggerVars,
 };
 
 export const MorePass = {
@@ -33,8 +40,9 @@ export const MorePass = {
   fromTo,
   set,
   timeline,
+  scrollTrigger,
   ease,
 };
 
-export { to, from, fromTo, set, timeline, ease };
+export { to, from, fromTo, set, timeline, scrollTrigger, ease };
 export default MorePass;

@@ -31,10 +31,24 @@ MorePass.timeline()
 | `to` / `from` / `fromTo` / `set` | Core tweens |
 | `timeline()` | Sequencing, labels, `+=` / `-=` / `<` / `>` |
 | `stagger` | `0.1` or `{ each, amount, from }` + function values |
+| `scrollTrigger` | scrub / toggleActions / onEnter… (GSAP-style) |
 | Transforms | `x y scale rotation …` via shared transform bag |
 | Colors | hex / rgb(a) / named → `backgroundColor`, `color`, … |
 | Overwrite | default `"auto"` — only conflicting props |
 | Playback | `play pause seek progress kill reverse restart` |
+
+```ts
+MorePass.to(".box", {
+  x: 400,
+  scrollTrigger: {
+    trigger: ".section",
+    start: "top 80%",
+    end: "bottom 20%",
+    scrub: true,
+  },
+})
+```
+
 
 ## Develop
 

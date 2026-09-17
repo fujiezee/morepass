@@ -1,3 +1,5 @@
+import { createScrollTrigger } from "./scroll-trigger";
+import type { ScrollTriggerVars } from "./scroll-types";
 import { mapFunctionValues, resolveStaggerDelay } from "./stagger";
 import { timeline } from "./timeline";
 import {
@@ -12,13 +14,35 @@ import type {
   Vars,
 } from "./types";
 
-function stripStagger(vars: Vars): Vars {
-  const { stagger: _s, ...rest } = vars;
+function stripSpecial(vars: Vars): Vars {
+  const { stagger: _s, scrollTrigger: _st, ...rest } = vars;
   return rest;
 }
 
 function hasStagger(vars: Vars, targetCount: number): boolean {
   return vars.stagger != null && targetCount > 1;
+}
+
+function attachScrollTrigger(
+  target: Target | Target[],
+  vars: Vars,
+  animation: TweenControls,
+): TweenControls {
+  const raw = vars.scrollTrigger;
+  if (raw == null || raw === false) return animation;
+
+  const stVars: ScrollTriggerVars =
+    raw === true ? { animation } : { ...raw, animation };
+
+  if (!stVars.trigger) {
+    const first = resolveTargets(target).find(
+      (t): t is Element => typeof Element !== "undefined" && t instanceof Element,
+    );
+    if (first) stVars.trigger = first;
+  }
+
+  createScrollTrigger(stVars);
+  return animation;
 }
 
 function createStaggered(
@@ -30,16 +54,16 @@ function createStaggered(
   const targets = resolveTargets(target);
   const stagger = toVars.stagger!;
   const baseDelay = toVars.delay ?? 0;
-  const cleanTo = stripStagger(toVars);
-  const cleanFrom = fromVars ? stripStagger(fromVars) : null;
+  const cleanTo = stripSpecial(toVars);
+  const cleanFrom = fromVars ? stripSpecial(fromVars) : null;
 
   const tl = timeline({
+    paused: !!toVars.scrollTrigger,
     onComplete: toVars.onComplete,
     onStart: toVars.onStart,
     onUpdate: toVars.onUpdate,
   });
 
-  // Avoid firing parent callbacks on every child — strip from children
   const { onComplete: _oc, onStart: _os, onUpdate: _ou, ...childBase } =
     cleanTo;
 
@@ -82,9 +106,13 @@ export function to(
 ): TweenControls | TimelineControls {
   const targets = resolveTargets(target);
   if (hasStagger(vars, targets.length)) {
-    return createStaggered(target, null, vars, "to");
+    const tl = createStaggered(target, null, vars, "to");
+    return attachScrollTrigger(target, vars, tl);
   }
-  return createTweenHandle(target, null, vars, "to");
+  const tween = createTweenHandle(target, null, stripSpecial(vars), "to", {
+    autoPlay: vars.scrollTrigger ? false : true,
+  });
+  return attachScrollTrigger(target, vars, tween);
 }
 
 export function from(
@@ -93,9 +121,14 @@ export function from(
 ): TweenControls | TimelineControls {
   const targets = resolveTargets(target);
   if (hasStagger(vars, targets.length)) {
-    return createStaggered(target, vars, vars, "from");
+    const tl = createStaggered(target, vars, vars, "from");
+    return attachScrollTrigger(target, vars, tl);
   }
-  return createTweenHandle(target, vars, vars, "from");
+  const cleaned = stripSpecial(vars);
+  const tween = createTweenHandle(target, cleaned, cleaned, "from", {
+    autoPlay: vars.scrollTrigger ? false : true,
+  });
+  return attachScrollTrigger(target, vars, tween);
 }
 
 export function fromTo(
@@ -105,14 +138,22 @@ export function fromTo(
 ): TweenControls | TimelineControls {
   const targets = resolveTargets(target);
   if (hasStagger(toVars, targets.length) || hasStagger(fromVars, targets.length)) {
-    return createStaggered(
+    const tl = createStaggered(
       target,
       fromVars,
       { ...toVars, stagger: toVars.stagger ?? fromVars.stagger },
       "fromTo",
     );
+    return attachScrollTrigger(target, toVars, tl);
   }
-  return createTweenHandle(target, fromVars, toVars, "fromTo");
+  const tween = createTweenHandle(
+    target,
+    stripSpecial(fromVars),
+    stripSpecial(toVars),
+    "fromTo",
+    { autoPlay: toVars.scrollTrigger || fromVars.scrollTrigger ? false : true },
+  );
+  return attachScrollTrigger(target, toVars.scrollTrigger ? toVars : fromVars, tween);
 }
 
 export function set(
