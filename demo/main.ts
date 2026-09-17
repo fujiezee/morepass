@@ -35,6 +35,12 @@ const quickPad = document.querySelector<HTMLElement>("#quick-pad")!;
 const quickDot = document.querySelector<HTMLElement>("#quick-dot")!;
 const codeEl = document.querySelector<HTMLElement>("#code")!;
 const statusEl = document.querySelector<HTMLElement>("#status")!;
+const brand = document.querySelector<HTMLElement>("#brand")!;
+const stage = document.querySelector<HTMLElement>("#stage")!;
+const controlsEl = document.querySelector<HTMLElement>("#controls")!;
+const orbA = document.querySelector<HTMLElement>("#orb-a")!;
+const orbB = document.querySelector<HTMLElement>("#orb-b")!;
+const orbC = document.querySelector<HTMLElement>("#orb-c")!;
 const dots = [...document.querySelectorAll<HTMLElement>("#dots .dot")];
 const panels = [...document.querySelectorAll<HTMLElement>(".panel")];
 const buttons = [
@@ -63,6 +69,12 @@ function showPanel(id: string) {
   for (const panel of panels) {
     panel.classList.toggle("active", panel.id === id);
   }
+  MorePass.from(stage, {
+    opacity: 0.35,
+    y: 10,
+    duration: 0.35,
+    ease: "power2.out",
+  });
 }
 
 function setActiveButton(name: string) {
@@ -103,38 +115,37 @@ function killAll() {
 
 function resetVisuals() {
   box.style.cssText =
-    "position:absolute;top:40%;left:40px;width:70px;height:70px;background:linear-gradient(145deg,#3ecf8e,#1f8f5f);";
+    "position:absolute;top:40%;left:40px;width:72px;height:72px;background:linear-gradient(145deg,#2fe39a,#147a4f);";
   box2.style.cssText =
-    "position:absolute;top:40%;left:40px;width:70px;height:70px;opacity:0.3;background:linear-gradient(145deg,#f0c14a,#b8891f);";
-  MorePass.set(box, { x: 0, y: 0, scale: 1, rotation: 0, opacity: 1 });
+    "position:absolute;top:40%;left:40px;width:72px;height:72px;opacity:0.3;background:linear-gradient(145deg,#ffc857,#9a6d16);";
+  MorePass.set(box, { x: 0, y: 0, scale: 1, rotation: 0, opacity: 1, xPercent: 0, yPercent: 0 });
   MorePass.set(box2, { x: 0, y: 0, scale: 0.6, rotation: 0, opacity: 0.3 });
 
   onceBox.style.cssText =
-    "position:absolute;top:40%;left:40px;width:70px;height:70px;background:linear-gradient(145deg,#3ecf8e,#1f8f5f);";
+    "position:absolute;top:40%;left:40px;width:72px;height:72px;background:linear-gradient(145deg,#2fe39a,#147a4f);";
   MorePass.set(onceBox, { x: 0, scale: 1, rotation: 0, opacity: 1 });
   onceUsed = false;
-  onceMeta.textContent =
-    "first click plays · more clicks ignored until reset";
+  onceMeta.textContent = "play once · reset to retry";
 
   scrubBox.style.cssText =
-    "position:absolute;top:38%;left:36px;width:70px;height:70px;background:linear-gradient(145deg,#3ecf8e,#1f8f5f);";
+    "position:absolute;top:38%;left:36px;width:72px;height:72px;background:linear-gradient(145deg,#2fe39a,#147a4f);";
   MorePass.set(scrubBox, {
     x: 0,
     rotation: 0,
     scale: 1,
-    backgroundColor: "#3ecf8e",
+    backgroundColor: "#2fe39a",
   });
   scrubRange.value = "0";
   scrubVal.textContent = "0.00";
 
   kfBox.style.cssText =
-    "position:absolute;top:38%;left:36px;width:70px;height:70px;background:linear-gradient(145deg,#3ecf8e,#1f8f5f);";
+    "position:absolute;top:38%;left:36px;width:72px;height:72px;background:linear-gradient(145deg,#2fe39a,#147a4f);";
   MorePass.set(kfBox, {
     x: 0,
     y: 0,
     rotation: 0,
     scale: 1,
-    backgroundColor: "#3ecf8e",
+    backgroundColor: "#2fe39a",
   });
   kfRange.value = "0";
   kfVal.textContent = "0.00";
@@ -145,8 +156,7 @@ function resetVisuals() {
   pinLabel.textContent = "background moves · card stays";
 
   for (const dot of dots) {
-    dot.style.cssText =
-      "width:26px;height:26px;background:#3ecf8e;opacity:0.25;";
+    dot.style.cssText = "width:28px;height:28px;background:#2fe39a;opacity:0.25;";
     MorePass.set(dot, { y: 0, scale: 1, opacity: 0.25 });
   }
 
@@ -162,7 +172,7 @@ function resetVisuals() {
   utilsLabel.textContent = "0";
 
   delayBox.style.cssText =
-    "position:absolute;top:40%;left:40px;width:70px;height:70px;background:linear-gradient(145deg,#3ecf8e,#1f8f5f);";
+    "position:absolute;top:40%;left:40px;width:72px;height:72px;background:linear-gradient(145deg,#2fe39a,#147a4f);";
   MorePass.set(delayBox, { x: 0, scale: 1 });
   delayMeta.textContent = "waiting…";
 
@@ -720,4 +730,58 @@ document.querySelector("#reset")!.addEventListener("click", () => {
   runDemo(activeDemo);
 });
 
+function bootAtmosphere() {
+  MorePass.to(orbA, {
+    y: 40,
+    x: 30,
+    duration: 6,
+    ease: "sine.inOut",
+    yoyo: true,
+    repeat: -1,
+  });
+  MorePass.to(orbB, {
+    y: -50,
+    x: -24,
+    duration: 7.5,
+    ease: "sine.inOut",
+    yoyo: true,
+    repeat: -1,
+  });
+  MorePass.to(orbC, {
+    y: 28,
+    x: -36,
+    duration: 5.5,
+    ease: "sine.inOut",
+    yoyo: true,
+    repeat: -1,
+  });
+}
+
+function bootIntro() {
+  MorePass.set(brand, { y: 28, opacity: 0 });
+  MorePass.set(controlsEl, { y: 18, opacity: 0 });
+  MorePass.set(stage, { y: 24, opacity: 0 });
+  MorePass.set(codeEl, { y: 16, opacity: 0 });
+
+  MorePass.timeline()
+    .to(brand, { y: 0, opacity: 1, duration: 0.7, ease: "power3.out" })
+    .to(
+      controlsEl,
+      { y: 0, opacity: 1, duration: 0.55, ease: "power2.out" },
+      "-=0.35",
+    )
+    .to(
+      stage,
+      { y: 0, opacity: 1, duration: 0.65, ease: "power2.out" },
+      "-=0.3",
+    )
+    .to(
+      codeEl,
+      { y: 0, opacity: 1, duration: 0.45, ease: "power2.out" },
+      "-=0.25",
+    );
+}
+
+bootAtmosphere();
+bootIntro();
 runDemo("to");

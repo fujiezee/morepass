@@ -3,23 +3,22 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MorePass demo</title>
+    <title>MorePass</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@500;700&family=JetBrains+Mono:wght@400;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
     <style>
       :root {
-        --bg0: #0f1412;
-        --bg1: #1a2420;
-        --ink: #e8f0ea;
-        --muted: #8fa396;
-        --accent: #3ecf8e;
-        --accent-2: #f0c14a;
-        --panel: rgba(255, 255, 255, 0.04);
-        --line: rgba(232, 240, 234, 0.14);
+        --bg: #07110c;
+        --ink: #eef6f0;
+        --muted: #7f9a88;
+        --accent: #2fe39a;
+        --accent-2: #ffc857;
+        --line: rgba(238, 246, 240, 0.12);
+        --glass: rgba(10, 28, 18, 0.55);
       }
 
       * {
@@ -30,74 +29,184 @@
       body {
         margin: 0;
         min-height: 100%;
-        overflow-x: hidden;
-        overflow-y: visible;
-        font-family: "DM Sans", sans-serif;
         color: var(--ink);
+        font-family: "IBM Plex Mono", monospace;
+        background: var(--bg);
+        overflow-x: hidden;
+      }
+
+      .sky {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
         background:
-          radial-gradient(900px 500px at 10% -10%, #1f3d32 0%, transparent 55%),
-          radial-gradient(700px 420px at 100% 0%, #3a2f14 0%, transparent 48%),
-          linear-gradient(160deg, var(--bg0), var(--bg1));
+          radial-gradient(ellipse 80% 50% at 50% -10%, #163528 0%, transparent 55%),
+          radial-gradient(circle 420px at 85% 15%, rgba(255, 200, 87, 0.14), transparent 60%),
+          radial-gradient(circle 520px at 8% 70%, rgba(47, 227, 154, 0.12), transparent 55%),
+          linear-gradient(180deg, #0a1610 0%, var(--bg) 45%, #050a08 100%);
+      }
+
+      .sky::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        opacity: 0.35;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+        mix-blend-mode: overlay;
+      }
+
+      .orb {
+        position: fixed;
+        border-radius: 50%;
+        filter: blur(48px);
+        opacity: 0.45;
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      .orb-a {
+        width: 280px;
+        height: 280px;
+        left: -40px;
+        top: 20%;
+        background: #1f8f5f;
+      }
+
+      .orb-b {
+        width: 220px;
+        height: 220px;
+        right: -30px;
+        top: 8%;
+        background: #b8891f;
+      }
+
+      .orb-c {
+        width: 180px;
+        height: 180px;
+        right: 18%;
+        bottom: 12%;
+        background: #2a6b4e;
       }
 
       .app {
-        max-width: 1080px;
+        position: relative;
+        z-index: 1;
+        max-width: 1120px;
         margin: 0 auto;
-        padding: 1rem 1rem 2rem;
+        padding: 1.25rem 1.25rem 2.5rem;
         display: grid;
-        gap: 0.75rem;
+        gap: 1rem;
       }
 
-      h1 {
+      header.brand {
+        display: grid;
+        gap: 0.35rem;
+        padding: 0.4rem 0 0.2rem;
+      }
+
+      .brand-mark {
         margin: 0;
-        font-size: clamp(1.7rem, 3.5vw, 2.4rem);
-        letter-spacing: -0.04em;
+        font-family: "Syne", sans-serif;
+        font-weight: 800;
+        font-size: clamp(3rem, 9vw, 5.5rem);
+        line-height: 0.9;
+        letter-spacing: -0.06em;
+        background: linear-gradient(115deg, #fff 10%, var(--accent) 55%, var(--accent-2) 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
       }
 
       .lede {
-        margin: 0.2rem 0 0;
+        margin: 0;
         color: var(--muted);
-        font-size: 0.92rem;
+        font-size: 0.84rem;
+        letter-spacing: 0.02em;
       }
 
       .controls {
         display: flex;
         flex-wrap: wrap;
-        gap: 0.4rem;
+        gap: 0.35rem;
       }
 
       button {
-        font: 600 0.78rem "JetBrains Mono", monospace;
+        font: 500 0.72rem/1 "IBM Plex Mono", monospace;
         border: 1px solid var(--line);
-        background: transparent;
+        background: rgba(255, 255, 255, 0.02);
         color: var(--ink);
-        padding: 0.45rem 0.65rem;
+        padding: 0.5rem 0.62rem;
         cursor: pointer;
+        transition:
+          border-color 0.15s ease,
+          color 0.15s ease,
+          background 0.15s ease,
+          transform 0.15s ease;
       }
 
-      button:hover,
+      button:hover {
+        border-color: rgba(47, 227, 154, 0.55);
+        color: var(--accent);
+        transform: translateY(-1px);
+      }
+
       button.active {
         border-color: var(--accent);
-        color: var(--accent);
+        color: #04140c;
+        background: var(--accent);
       }
 
-      button.new {
-        border-color: rgba(240, 193, 74, 0.55);
+      button.new:not(.active) {
+        border-color: rgba(255, 200, 87, 0.45);
         color: var(--accent-2);
+      }
+
+      button.new.active {
+        background: var(--accent-2);
+        border-color: var(--accent-2);
+        color: #1a1204;
       }
 
       .stage {
         position: relative;
+        min-height: 280px;
         border: 1px solid var(--line);
-        background: var(--panel);
-        /* expand with active panel — no nested scrollbar */
-        overflow: visible;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 40%),
+          var(--glass);
+        backdrop-filter: blur(10px);
+        overflow: hidden;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      }
+
+      .stage::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(47, 227, 154, 0.06) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(47, 227, 154, 0.06) 1px, transparent 1px);
+        background-size: 28px 28px;
+        mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.55), transparent 85%);
+        pointer-events: none;
+      }
+
+      .stage::after {
+        content: "";
+        position: absolute;
+        inset: auto 0 0;
+        height: 45%;
+        background: linear-gradient(0deg, rgba(7, 17, 12, 0.85), transparent);
+        pointer-events: none;
       }
 
       .panel {
         display: none;
-        padding: 1rem;
-        gap: 0.85rem;
+        position: relative;
+        z-index: 1;
+        padding: 1.15rem;
+        gap: 0.9rem;
       }
 
       .panel.active {
@@ -108,8 +217,9 @@
 
       .playfield {
         position: relative;
-        height: 220px;
-        border: 1px dashed var(--line);
+        height: min(300px, 46vh);
+        border: 1px solid rgba(47, 227, 154, 0.18);
+        background: rgba(0, 0, 0, 0.22);
         overflow: hidden;
       }
 
@@ -117,39 +227,41 @@
         position: absolute;
         top: 40%;
         left: 40px;
-        width: 70px;
-        height: 70px;
-        background: linear-gradient(145deg, var(--accent), #1f8f5f);
-        box-shadow: 0 10px 32px rgba(62, 207, 142, 0.22);
+        width: 72px;
+        height: 72px;
+        background: linear-gradient(145deg, var(--accent), #147a4f);
+        box-shadow: 0 18px 40px rgba(47, 227, 154, 0.28);
       }
 
       .box.alt {
-        background: linear-gradient(145deg, var(--accent-2), #b8891f);
+        background: linear-gradient(145deg, var(--accent-2), #9a6d16);
         opacity: 0.3;
+        box-shadow: 0 18px 40px rgba(255, 200, 87, 0.22);
       }
 
       .dots {
-        height: 160px;
+        height: min(220px, 36vh);
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 12px;
-        border: 1px dashed var(--line);
+        gap: 14px;
+        border: 1px solid rgba(47, 227, 154, 0.18);
+        background: rgba(0, 0, 0, 0.22);
       }
 
       .dot {
-        width: 26px;
-        height: 26px;
+        width: 28px;
+        height: 28px;
         background: var(--accent);
         opacity: 0.25;
       }
 
       .rail {
         position: relative;
-        height: 180px;
-        border: 1px dashed var(--line);
+        height: min(200px, 34vh);
+        border: 1px solid rgba(47, 227, 154, 0.18);
         overflow: hidden;
-        background: rgba(0, 0, 0, 0.15);
+        background: rgba(0, 0, 0, 0.25);
       }
 
       .rail-track {
@@ -165,7 +277,7 @@
       .rail-item {
         flex: 0 0 88px;
         height: 88px;
-        background: rgba(255, 255, 255, 0.06);
+        background: rgba(255, 255, 255, 0.05);
         border: 1px solid var(--line);
       }
 
@@ -175,35 +287,38 @@
         top: 50%;
         translate: -50% -50%;
         z-index: 2;
-        min-width: 160px;
-        padding: 0.9rem 1.1rem;
-        background: linear-gradient(145deg, #1f8f5f, #3ecf8e);
+        min-width: 168px;
+        padding: 0.95rem 1.15rem;
+        background: linear-gradient(145deg, #147a4f, var(--accent));
         color: #04140c;
-        font-weight: 700;
+        font-family: "Syne", sans-serif;
+        font-weight: 800;
+        letter-spacing: -0.03em;
         text-align: center;
       }
 
       .pin-card small {
         display: block;
-        margin-top: 0.25rem;
-        font: 0.75rem/1.3 "JetBrains Mono", monospace;
+        margin-top: 0.3rem;
+        font: 0.72rem/1.3 "IBM Plex Mono", monospace;
         font-weight: 500;
-        opacity: 0.85;
+        opacity: 0.8;
       }
 
       .scrub-box {
         position: absolute;
         top: 38%;
         left: 36px;
-        width: 70px;
-        height: 70px;
-        background: linear-gradient(145deg, var(--accent), #1f8f5f);
+        width: 72px;
+        height: 72px;
+        background: linear-gradient(145deg, var(--accent), #147a4f);
+        box-shadow: 0 18px 40px rgba(47, 227, 154, 0.28);
       }
 
       .slider-row {
         display: grid;
         grid-template-columns: auto 1fr auto;
-        gap: 0.7rem;
+        gap: 0.75rem;
         align-items: center;
       }
 
@@ -213,30 +328,32 @@
       }
 
       .meta {
-        font: 0.78rem "JetBrains Mono", monospace;
+        font: 0.74rem "IBM Plex Mono", monospace;
         color: var(--muted);
       }
 
       .center {
         display: grid;
         justify-items: center;
-        gap: 0.8rem;
-        padding: 1.2rem 0;
+        gap: 0.85rem;
+        padding: 0.6rem 0;
       }
 
       #mm-box {
-        width: 140px;
-        height: 78px;
+        width: 148px;
+        height: 84px;
         display: grid;
         place-items: center;
         background: var(--accent);
         color: #04140c;
-        font-weight: 700;
+        font-family: "Syne", sans-serif;
+        font-weight: 800;
+        letter-spacing: -0.03em;
       }
 
       #utils-bar {
-        width: min(420px, 70vw);
-        height: 14px;
+        width: min(440px, 72vw);
+        height: 12px;
         background: rgba(255, 255, 255, 0.08);
         position: relative;
         overflow: hidden;
@@ -246,39 +363,42 @@
         position: absolute;
         inset: 0 auto 0 0;
         width: 0%;
-        background: var(--accent-2);
+        background: linear-gradient(90deg, var(--accent), var(--accent-2));
       }
 
       #css-card {
-        width: min(280px, 70vw);
-        height: 100px;
+        width: min(300px, 72vw);
+        height: 110px;
         display: grid;
         place-items: center;
-        background: rgba(62, 207, 142, 0.15);
-        border: 1px dashed var(--line);
-        font-weight: 700;
+        background: rgba(47, 227, 154, 0.12);
+        border: 1px solid rgba(47, 227, 154, 0.28);
+        font-family: "Syne", sans-serif;
+        font-weight: 800;
+        letter-spacing: -0.03em;
         transform: translateY(calc(var(--lift, 0) * -1px));
-        box-shadow: 0 calc(var(--lift, 0) * 0.4px) calc(var(--lift, 0) * 1.2px)
-          rgba(0, 0, 0, 0.35);
+        box-shadow: 0 calc(var(--lift, 0) * 0.45px) calc(var(--lift, 0) * 1.3px)
+          rgba(0, 0, 0, 0.4);
       }
 
       #attr-svg {
-        width: min(280px, 70vw);
-        height: 160px;
-        border: 1px dashed var(--line);
-        background: rgba(0, 0, 0, 0.15);
+        width: min(300px, 72vw);
+        height: 170px;
+        border: 1px solid rgba(47, 227, 154, 0.18);
+        background: rgba(0, 0, 0, 0.22);
       }
 
       #delay-meta {
-        font: 0.85rem "JetBrains Mono", monospace;
+        font: 0.84rem "IBM Plex Mono", monospace;
         color: var(--accent-2);
         min-height: 1.2em;
       }
 
       #quick-pad {
-        width: min(420px, 80vw);
-        height: 160px;
-        border: 1px dashed var(--line);
+        width: min(440px, 82vw);
+        height: 170px;
+        border: 1px solid rgba(47, 227, 154, 0.18);
+        background: rgba(0, 0, 0, 0.22);
         position: relative;
         cursor: crosshair;
         touch-action: none;
@@ -288,38 +408,53 @@
         position: absolute;
         left: 20px;
         top: 60px;
-        width: 28px;
-        height: 28px;
+        width: 30px;
+        height: 30px;
         background: var(--accent-2);
         pointer-events: none;
+        box-shadow: 0 10px 28px rgba(255, 200, 87, 0.35);
+      }
+
+      .footer-rail {
+        display: grid;
+        gap: 0.55rem;
       }
 
       #status {
         min-height: 1.2em;
         color: var(--accent-2);
-        font: 0.8rem/1.35 "JetBrains Mono", monospace;
+        font: 0.78rem/1.35 "IBM Plex Mono", monospace;
       }
 
       pre {
         margin: 0;
-        padding: 0.7rem 0.85rem;
+        padding: 0.85rem 1rem;
         border: 1px solid var(--line);
-        background: rgba(0, 0, 0, 0.28);
-        font: 0.76rem/1.45 "JetBrains Mono", monospace;
+        border-left: 3px solid var(--accent);
+        background: rgba(0, 0, 0, 0.42);
+        font: 0.74rem/1.5 "IBM Plex Mono", monospace;
         color: #cfe6d6;
         white-space: pre-wrap;
         overflow: visible;
       }
+
+      @media (max-width: 640px) {
+        .brand-mark {
+          font-size: clamp(2.4rem, 14vw, 3.4rem);
+        }
+      }
     </style>
   </head>
   <body>
-    <div class="app">
-      <header>
-        <h1>MorePass</h1>
-        <p class="lede">
-          Panels expand in place — no nested scrollbars. Sliders drive scrub /
-          pin / keyframes. Yellow = newer APIs.
-        </p>
+    <div class="sky" aria-hidden="true"></div>
+    <div class="orb orb-a" id="orb-a" aria-hidden="true"></div>
+    <div class="orb orb-b" id="orb-b" aria-hidden="true"></div>
+    <div class="orb orb-c" id="orb-c" aria-hidden="true"></div>
+
+    <div class="app" id="app">
+      <header class="brand" id="brand">
+        <h1 class="brand-mark">MorePass</h1>
+        <p class="lede">Live motion playground</p>
       </header>
 
       <div class="controls" id="controls">
@@ -352,7 +487,7 @@
         <button id="reset">reset</button>
       </div>
 
-      <div class="stage">
+      <div class="stage" id="stage">
         <div class="panel active" id="panel-tween">
           <div class="playfield">
             <div class="box" id="box"></div>
@@ -423,9 +558,7 @@
           </div>
           <div class="slider-row">
             <button id="once-play" type="button" class="new">play once</button>
-            <span class="meta" id="once-meta"
-              >first click plays · more clicks ignored until reset</span
-            >
+            <span class="meta" id="once-meta">play once · reset to retry</span>
           </div>
         </div>
 
@@ -434,14 +567,14 @@
             <div id="quick-pad">
               <div id="quick-dot"></div>
             </div>
-            <span class="meta">move pointer — quickTo retargets x/y</span>
+            <span class="meta">drag · quickTo</span>
           </div>
         </div>
 
         <div class="panel" id="panel-mm">
           <div class="center">
             <div id="mm-box">wide</div>
-            <span class="meta">resize window across 800px</span>
+            <span class="meta">resize across 800px</span>
           </div>
         </div>
 
@@ -476,7 +609,7 @@
                 cx="140"
                 cy="80"
                 r="18"
-                fill="#3ecf8e"
+                fill="#2fe39a"
               />
             </svg>
             <span class="meta" id="attr-meta">r = 18</span>
@@ -484,8 +617,10 @@
         </div>
       </div>
 
-      <div id="status">ready</div>
-      <pre id="code"></pre>
+      <div class="footer-rail">
+        <div id="status">ready</div>
+        <pre id="code"></pre>
+      </div>
     </div>
     <script type="module" src="./main.ts"></script>
   </body>
