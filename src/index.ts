@@ -1,6 +1,7 @@
 import { set, to, from, fromTo } from "./animate";
 import { ease } from "./ease";
 import { matchMedia } from "./match-media";
+import { quickTo } from "./quick-to";
 import { scrollTrigger } from "./scroll-trigger";
 import { timeline } from "./timeline";
 import { utils } from "./utils";
@@ -20,6 +21,7 @@ import type {
   ScrollTriggerInstance,
   ScrollTriggerVars,
 } from "./scroll-types";
+import type { QuickToVars } from "./quick-to";
 
 export type {
   EaseFn,
@@ -34,6 +36,7 @@ export type {
   Vars,
   ScrollTriggerInstance,
   ScrollTriggerVars,
+  QuickToVars,
 };
 
 export const MorePass = {
@@ -44,6 +47,7 @@ export const MorePass = {
   timeline,
   scrollTrigger,
   matchMedia,
+  quickTo,
   utils,
   ease,
 };
@@ -56,6 +60,7 @@ export {
   timeline,
   scrollTrigger,
   matchMedia,
+  quickTo,
   utils,
   ease,
 };

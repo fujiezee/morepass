@@ -45,6 +45,8 @@ const SPECIAL = new Set([
   "onRepeat",
   "stagger",
   "scrollTrigger",
+  "keyframes",
+  "paused",
 ]);
 
 type ResolvedTarget = object | Element;
@@ -443,12 +445,11 @@ class Tween implements TweenHandle {
   renderAt(localTime: number) {
     if (this.state === "killed") return;
 
-    if (localTime < 0) {
-      this.apply(0);
-      return;
-    }
+    // Not started yet — leave the target alone so earlier timeline
+    // children keep their interpolated values.
+    if (localTime < 0) return;
 
-    if (!this.startedCallback && localTime >= 0) {
+    if (!this.startedCallback) {
       this.startedCallback = true;
       this.claim();
       this.onStart?.();
@@ -566,7 +567,9 @@ export function createTweenHandle(
     vars.immediateRender ?? (mode === "from" || mode === "fromTo");
   if (immediate) tween.renderStart();
 
-  if (options.autoPlay !== false) tween.play();
+  const shouldPlay =
+    options.autoPlay !== false && !vars.paused && !vars.scrollTrigger;
+  if (shouldPlay) tween.play();
   return tween;
 }
 

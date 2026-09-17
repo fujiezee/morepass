@@ -19,202 +19,408 @@
         --accent: #3ecf8e;
         --accent-2: #f0c14a;
         --panel: rgba(255, 255, 255, 0.04);
-        --line: rgba(232, 240, 234, 0.12);
+        --line: rgba(232, 240, 234, 0.14);
       }
 
       * {
         box-sizing: border-box;
       }
 
+      html,
       body {
         margin: 0;
-        min-height: 100vh;
+        min-height: 100%;
+        overflow-x: hidden;
+        overflow-y: visible;
         font-family: "DM Sans", sans-serif;
         color: var(--ink);
         background:
-          radial-gradient(1200px 600px at 10% -10%, #1f3d32 0%, transparent 55%),
-          radial-gradient(900px 500px at 100% 0%, #3a2f14 0%, transparent 50%),
+          radial-gradient(900px 500px at 10% -10%, #1f3d32 0%, transparent 55%),
+          radial-gradient(700px 420px at 100% 0%, #3a2f14 0%, transparent 48%),
           linear-gradient(160deg, var(--bg0), var(--bg1));
       }
 
-      main {
-        width: min(920px, calc(100% - 2rem));
+      .app {
+        max-width: 1080px;
         margin: 0 auto;
-        padding: 3rem 0 4rem;
+        padding: 1rem 1rem 2rem;
+        display: grid;
+        gap: 0.75rem;
       }
 
-      .brand {
-        font-size: clamp(2.8rem, 8vw, 4.5rem);
-        font-weight: 700;
-        letter-spacing: -0.04em;
+      h1 {
         margin: 0;
-      }
-
-      .brand span {
-        color: var(--accent);
+        font-size: clamp(1.7rem, 3.5vw, 2.4rem);
+        letter-spacing: -0.04em;
       }
 
       .lede {
-        margin: 0.75rem 0 2rem;
-        max-width: 36rem;
+        margin: 0.2rem 0 0;
         color: var(--muted);
-        font-size: 1.05rem;
-        line-height: 1.5;
-      }
-
-      .stage {
-        position: relative;
-        height: 280px;
-        border: 1px solid var(--line);
-        background: var(--panel);
-        overflow: hidden;
-      }
-
-      .box {
-        position: absolute;
-        top: 100px;
-        left: 40px;
-        width: 72px;
-        height: 72px;
-        background: linear-gradient(145deg, var(--accent), #1f8f5f);
-        box-shadow: 0 12px 40px rgba(62, 207, 142, 0.25);
-      }
-
-      .box.alt {
-        left: 40px;
-        top: 100px;
-        background: linear-gradient(145deg, var(--accent-2), #b8891f);
-        opacity: 0.2;
-        transform: scale(0.6);
-      }
-
-      .dots {
-        display: none;
-        position: absolute;
-        inset: 0;
-        align-items: center;
-        justify-content: center;
-        gap: 14px;
-      }
-
-      .stage.show-dots .box {
-        display: none;
-      }
-
-      .stage.show-dots .dots {
-        display: flex;
-      }
-
-      .dot {
-        width: 28px;
-        height: 28px;
-        background: var(--accent);
-        opacity: 0.25;
+        font-size: 0.92rem;
       }
 
       .controls {
         display: flex;
         flex-wrap: wrap;
-        gap: 0.6rem;
-        margin-top: 1.25rem;
+        gap: 0.4rem;
       }
 
       button {
-        font: 600 0.9rem "JetBrains Mono", monospace;
+        font: 600 0.78rem "JetBrains Mono", monospace;
         border: 1px solid var(--line);
         background: transparent;
         color: var(--ink);
-        padding: 0.65rem 0.9rem;
+        padding: 0.45rem 0.65rem;
         cursor: pointer;
       }
 
-      button:hover {
+      button:hover,
+      button.active {
         border-color: var(--accent);
         color: var(--accent);
       }
 
-      pre {
-        margin-top: 1.5rem;
-        padding: 1rem 1.1rem;
-        border: 1px solid var(--line);
-        background: rgba(0, 0, 0, 0.28);
-        overflow: auto;
-        font: 0.85rem/1.55 "JetBrains Mono", monospace;
-        color: #cfe6d6;
+      button.new {
+        border-color: rgba(240, 193, 74, 0.55);
+        color: var(--accent-2);
       }
 
-      .scroll-space {
-        height: 70vh;
-      }
-
-      .scroll-section {
+      .stage {
         position: relative;
-        min-height: 60vh;
         border: 1px solid var(--line);
         background: var(--panel);
-        margin: 2rem 0 4rem;
+        /* expand with active panel — no nested scrollbar */
+        overflow: visible;
+      }
+
+      .panel {
+        display: none;
+        padding: 1rem;
+        gap: 0.85rem;
+      }
+
+      .panel.active {
+        display: grid;
+        align-content: start;
+        justify-items: stretch;
+      }
+
+      .playfield {
+        position: relative;
+        height: 220px;
+        border: 1px dashed var(--line);
         overflow: hidden;
       }
 
-      .scroll-section p {
-        margin: 1.25rem;
+      .box {
+        position: absolute;
+        top: 40%;
+        left: 40px;
+        width: 70px;
+        height: 70px;
+        background: linear-gradient(145deg, var(--accent), #1f8f5f);
+        box-shadow: 0 10px 32px rgba(62, 207, 142, 0.22);
+      }
+
+      .box.alt {
+        background: linear-gradient(145deg, var(--accent-2), #b8891f);
+        opacity: 0.3;
+      }
+
+      .dots {
+        height: 160px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        border: 1px dashed var(--line);
+      }
+
+      .dot {
+        width: 26px;
+        height: 26px;
+        background: var(--accent);
+        opacity: 0.25;
+      }
+
+      .rail {
+        position: relative;
+        height: 180px;
+        border: 1px dashed var(--line);
+        overflow: hidden;
+        background: rgba(0, 0, 0, 0.15);
+      }
+
+      .rail-track {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0 1rem;
+        will-change: transform;
+      }
+
+      .rail-item {
+        flex: 0 0 88px;
+        height: 88px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid var(--line);
+      }
+
+      .pin-card {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        translate: -50% -50%;
+        z-index: 2;
+        min-width: 160px;
+        padding: 0.9rem 1.1rem;
+        background: linear-gradient(145deg, #1f8f5f, #3ecf8e);
+        color: #04140c;
+        font-weight: 700;
+        text-align: center;
+      }
+
+      .pin-card small {
+        display: block;
+        margin-top: 0.25rem;
+        font: 0.75rem/1.3 "JetBrains Mono", monospace;
+        font-weight: 500;
+        opacity: 0.85;
+      }
+
+      .scrub-box {
+        position: absolute;
+        top: 38%;
+        left: 36px;
+        width: 70px;
+        height: 70px;
+        background: linear-gradient(145deg, var(--accent), #1f8f5f);
+      }
+
+      .slider-row {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 0.7rem;
+        align-items: center;
+      }
+
+      input[type="range"] {
+        width: 100%;
+        accent-color: var(--accent-2);
+      }
+
+      .meta {
+        font: 0.78rem "JetBrains Mono", monospace;
         color: var(--muted);
       }
 
-      #scroll-box {
+      .center {
+        display: grid;
+        justify-items: center;
+        gap: 0.8rem;
+        padding: 1.2rem 0;
+      }
+
+      #mm-box {
+        width: 140px;
+        height: 78px;
+        display: grid;
+        place-items: center;
+        background: var(--accent);
+        color: #04140c;
+        font-weight: 700;
+      }
+
+      #utils-bar {
+        width: min(420px, 70vw);
+        height: 14px;
+        background: rgba(255, 255, 255, 0.08);
+        position: relative;
+        overflow: hidden;
+      }
+
+      #utils-fill {
         position: absolute;
-        left: 40px;
-        top: 40%;
-        width: 72px;
-        height: 72px;
-        background: linear-gradient(145deg, var(--accent), #1f8f5f);
+        inset: 0 auto 0 0;
+        width: 0%;
+        background: var(--accent-2);
+      }
+
+      #quick-pad {
+        width: min(420px, 80vw);
+        height: 160px;
+        border: 1px dashed var(--line);
+        position: relative;
+        cursor: crosshair;
+        touch-action: none;
+      }
+
+      #quick-dot {
+        position: absolute;
+        left: 20px;
+        top: 60px;
+        width: 28px;
+        height: 28px;
+        background: var(--accent-2);
+        pointer-events: none;
+      }
+
+      #status {
+        min-height: 1.2em;
+        color: var(--accent-2);
+        font: 0.8rem/1.35 "JetBrains Mono", monospace;
+      }
+
+      pre {
+        margin: 0;
+        padding: 0.7rem 0.85rem;
+        border: 1px solid var(--line);
+        background: rgba(0, 0, 0, 0.28);
+        font: 0.76rem/1.45 "JetBrains Mono", monospace;
+        color: #cfe6d6;
+        white-space: pre-wrap;
+        overflow: visible;
       }
     </style>
   </head>
   <body>
-    <main>
-      <h1 class="brand">MorePass</h1>
-      <p class="lede">
-        A small modern tween library — tweens, timeline, stagger, scrollTrigger,
-        colors, and overwrite.
-      </p>
+    <div class="app">
+      <header>
+        <h1>MorePass</h1>
+        <p class="lede">
+          Panels expand in place — no nested scrollbars. Sliders drive scrub /
+          pin / keyframes. Yellow = newer APIs.
+        </p>
+      </header>
 
-      <div class="stage" id="stage">
-        <div class="box" id="box"></div>
-        <div class="box alt" id="box2"></div>
-        <div class="dots" id="dots">
-          <div class="dot"></div>
-          <div class="dot"></div>
-          <div class="dot"></div>
-          <div class="dot"></div>
-          <div class="dot"></div>
-          <div class="dot"></div>
-        </div>
-      </div>
-
-      <div class="controls">
-        <button id="to">to()</button>
-        <button id="from">from()</button>
-        <button id="fromTo">fromTo()</button>
-        <button id="timeline">timeline()</button>
-        <button id="stagger">stagger</button>
-        <button id="scroll">scrollTrigger</button>
-        <button id="color">color</button>
-        <button id="overwrite">overwrite</button>
-        <button id="yoyo">yoyo + repeat</button>
-        <button id="pause">pause / play</button>
+      <div class="controls" id="controls">
+        <button data-demo="to" class="active">to()</button>
+        <button data-demo="from">from()</button>
+        <button data-demo="fromTo">fromTo()</button>
+        <button data-demo="timeline">timeline()</button>
+        <button data-demo="stagger">stagger</button>
+        <button data-demo="color">color</button>
+        <button data-demo="overwrite">overwrite</button>
+        <button data-demo="yoyo">yoyo</button>
+        <button data-demo="keyframes" class="new">keyframes</button>
+        <button data-demo="kfScrub" class="new">kf scrub</button>
+        <button data-demo="scrub" class="new">scrub</button>
+        <button data-demo="pin" class="new">pin</button>
+        <button data-demo="once" class="new">once</button>
+        <button data-demo="quickTo" class="new">quickTo</button>
+        <button data-demo="matchMedia" class="new">matchMedia</button>
+        <button data-demo="utils" class="new">utils</button>
+        <button id="pause">pause</button>
         <button id="reset">reset</button>
       </div>
 
-      <pre id="code"></pre>
+      <div class="stage">
+        <div class="panel active" id="panel-tween">
+          <div class="playfield">
+            <div class="box" id="box"></div>
+            <div class="box alt" id="box2"></div>
+          </div>
+        </div>
 
-      <div class="scroll-space" aria-hidden="true"></div>
-      <section class="scroll-section" id="scroll-section">
-        <p>Scroll this section — the box is scrubbed by ScrollTrigger.</p>
-        <div id="scroll-box"></div>
-      </section>
-      <div class="scroll-space" aria-hidden="true"></div>
-    </main>
+        <div class="panel" id="panel-stagger">
+          <div class="dots" id="dots">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+        </div>
+
+        <div class="panel" id="panel-scrub">
+          <div class="playfield">
+            <div class="scrub-box" id="scrub-box"></div>
+          </div>
+          <div class="slider-row">
+            <span class="meta">scrub</span>
+            <input id="scrub-range" type="range" min="0" max="1000" value="0" />
+            <span class="meta" id="scrub-val">0.00</span>
+          </div>
+        </div>
+
+        <div class="panel" id="panel-kf">
+          <div class="playfield">
+            <div class="scrub-box" id="kf-box"></div>
+          </div>
+          <div class="slider-row">
+            <span class="meta">keyframes</span>
+            <input id="kf-range" type="range" min="0" max="1000" value="0" />
+            <span class="meta" id="kf-val">0.00</span>
+          </div>
+        </div>
+
+        <div class="panel" id="panel-pin">
+          <div class="rail" id="pin-rail">
+            <div class="rail-track" id="pin-track">
+              <div class="rail-item"></div>
+              <div class="rail-item"></div>
+              <div class="rail-item"></div>
+              <div class="rail-item"></div>
+              <div class="rail-item"></div>
+              <div class="rail-item"></div>
+              <div class="rail-item"></div>
+              <div class="rail-item"></div>
+            </div>
+            <div class="pin-card" id="pin-card">
+              PINNED
+              <small id="pin-label">background moves · card stays</small>
+            </div>
+          </div>
+          <div class="slider-row">
+            <span class="meta">pin</span>
+            <input id="pin-range" type="range" min="0" max="1000" value="0" />
+            <span class="meta" id="pin-val">0.00</span>
+          </div>
+        </div>
+
+        <div class="panel" id="panel-once">
+          <div class="playfield">
+            <div class="box" id="once-box"></div>
+          </div>
+          <div class="slider-row">
+            <button id="once-play" type="button" class="new">play once</button>
+            <span class="meta" id="once-meta"
+              >first click plays · more clicks ignored until reset</span
+            >
+          </div>
+        </div>
+
+        <div class="panel" id="panel-quick">
+          <div class="center">
+            <div id="quick-pad">
+              <div id="quick-dot"></div>
+            </div>
+            <span class="meta">move pointer — quickTo retargets x/y</span>
+          </div>
+        </div>
+
+        <div class="panel" id="panel-mm">
+          <div class="center">
+            <div id="mm-box">wide</div>
+            <span class="meta">resize window across 800px</span>
+          </div>
+        </div>
+
+        <div class="panel" id="panel-utils">
+          <div class="center">
+            <div id="utils-bar"><div id="utils-fill"></div></div>
+            <div class="meta" id="utils-label">0</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="status">ready</div>
+      <pre id="code"></pre>
+    </div>
     <script type="module" src="./main.ts"></script>
   </body>
 </html>

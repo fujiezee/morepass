@@ -3,6 +3,8 @@ import type { Target, TweenControls } from "./types";
 export type ScrollTriggerVars = {
   /** Element that defines the scroll range. Defaults to the animated element. */
   trigger?: Target | Element;
+  /** Scroll container. Defaults to the window / document. */
+  scroller?: Target | Element | Window;
   /** e.g. `"top bottom"`, `"top 80%"`, `"center center"` */
   start?: string;
   /** e.g. `"bottom top"`, `"bottom center"` */

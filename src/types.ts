@@ -52,6 +52,10 @@ export type Vars = Record<string, unknown> & {
   overwrite?: boolean | "auto";
   stagger?: number | StaggerVars;
   scrollTrigger?: ScrollTriggerVars | boolean;
+  /** Sequential or percentage keyframes (builds an internal timeline). */
+  keyframes?: Vars[] | Record<string, Vars>;
+  /** Start paused (drive with seek/progress or play later). */
+  paused?: boolean;
   onStart?: () => void;
   onUpdate?: () => void;
   onComplete?: () => void;

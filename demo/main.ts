@@ -1,237 +1,529 @@
-import MorePass, { scrollTrigger, type TweenControls } from "../src";
+import MorePass, {
+  matchMedia,
+  quickTo,
+  type TweenControls,
+} from "../src";
 
-const stage = document.querySelector<HTMLElement>("#stage")!;
 const box = document.querySelector<HTMLElement>("#box")!;
 const box2 = document.querySelector<HTMLElement>("#box2")!;
-const scrollBox = document.querySelector<HTMLElement>("#scroll-box")!;
-const scrollSection = document.querySelector<HTMLElement>("#scroll-section")!;
+const onceBox = document.querySelector<HTMLElement>("#once-box")!;
+const scrubBox = document.querySelector<HTMLElement>("#scrub-box")!;
+const scrubRange = document.querySelector<HTMLInputElement>("#scrub-range")!;
+const scrubVal = document.querySelector<HTMLElement>("#scrub-val")!;
+const kfBox = document.querySelector<HTMLElement>("#kf-box")!;
+const kfRange = document.querySelector<HTMLInputElement>("#kf-range")!;
+const kfVal = document.querySelector<HTMLElement>("#kf-val")!;
+const pinTrack = document.querySelector<HTMLElement>("#pin-track")!;
+const pinRange = document.querySelector<HTMLInputElement>("#pin-range")!;
+const pinVal = document.querySelector<HTMLElement>("#pin-val")!;
+const pinLabel = document.querySelector<HTMLElement>("#pin-label")!;
+const oncePlay = document.querySelector<HTMLButtonElement>("#once-play")!;
+const onceMeta = document.querySelector<HTMLElement>("#once-meta")!;
+const mmBox = document.querySelector<HTMLElement>("#mm-box")!;
+const utilsFill = document.querySelector<HTMLElement>("#utils-fill")!;
+const utilsLabel = document.querySelector<HTMLElement>("#utils-label")!;
+const quickPad = document.querySelector<HTMLElement>("#quick-pad")!;
+const quickDot = document.querySelector<HTMLElement>("#quick-dot")!;
+const codeEl = document.querySelector<HTMLElement>("#code")!;
+const statusEl = document.querySelector<HTMLElement>("#status")!;
 const dots = [...document.querySelectorAll<HTMLElement>("#dots .dot")];
-const code = document.querySelector<HTMLElement>("#code")!;
+const panels = [...document.querySelectorAll<HTMLElement>(".panel")];
+const buttons = [
+  ...document.querySelectorAll<HTMLButtonElement>("#controls [data-demo]"),
+];
 
 let current: TweenControls | null = null;
-let scrollReady = false;
+let mm: ReturnType<typeof matchMedia> | null = null;
+let activeDemo = "to";
+let onceUsed = false;
+let scrubTween: TweenControls | null = null;
+let kfTween: TweenControls | null = null;
+let setQuickX: ((v: number) => TweenControls) | null = null;
+let setQuickY: ((v: number) => TweenControls) | null = null;
 
-function resetBoxes() {
-  current?.kill();
-  scrollTrigger.killAll();
-  scrollReady = false;
-  stage.classList.remove("show-dots");
-  box.style.cssText =
-    "position:absolute;top:100px;left:40px;width:72px;height:72px;background:linear-gradient(145deg, #3ecf8e, #1f8f5f);";
-  box2.style.cssText =
-    "position:absolute;top:100px;left:40px;width:72px;height:72px;opacity:0.2;background:linear-gradient(145deg, #f0c14a, #b8891f);";
-  MorePass.set(box, { x: 0, y: 0, scale: 1, rotation: 0, opacity: 1 });
-  MorePass.set(box2, { x: 0, y: 0, scale: 0.6, rotation: 0, opacity: 0.2 });
-  MorePass.set(scrollBox, { x: 0, rotation: 0, backgroundColor: "#3ecf8e" });
-  for (const dot of dots) {
-    dot.style.cssText =
-      "width:28px;height:28px;background:#3ecf8e;opacity:0.25;";
-    MorePass.set(dot, { y: 0, scale: 1, opacity: 0.25 });
-  }
+function status(text: string) {
+  statusEl.textContent = text;
 }
 
 function show(snippet: string) {
-  code.textContent = snippet.trim();
+  codeEl.textContent = snippet.trim();
 }
 
-function armScrollDemo() {
-  if (scrollReady) {
-    scrollTrigger.refresh();
-    return;
+function showPanel(id: string) {
+  for (const panel of panels) {
+    panel.classList.toggle("active", panel.id === id);
   }
-  scrollReady = true;
-  current = MorePass.to(scrollBox, {
-    x: 520,
-    rotation: 180,
-    backgroundColor: "#f0c14a",
-    ease: "none",
-    scrollTrigger: {
-      trigger: scrollSection,
-      start: "top 80%",
-      end: "bottom 20%",
-      scrub: true,
-      pin: scrollBox,
-      pinSpacing: false,
-    },
-  });
 }
 
-document.querySelector("#to")!.addEventListener("click", () => {
-  resetBoxes();
-  show(`MorePass.to(box, {
-  x: 520, rotation: 180, scale: 1.2,
+function setActiveButton(name: string) {
+  for (const btn of buttons) {
+    btn.classList.toggle("active", btn.dataset.demo === name);
+  }
+}
+
+function onQuickMove(e: PointerEvent) {
+  const rect = quickPad.getBoundingClientRect();
+  const x = Math.max(0, Math.min(rect.width - 28, e.clientX - rect.left - 14));
+  const y = Math.max(0, Math.min(rect.height - 28, e.clientY - rect.top - 14));
+  setQuickX?.(x);
+  setQuickY?.(y);
+  status(`quickTo · x ${x.toFixed(0)} y ${y.toFixed(0)}`);
+}
+
+function killAll() {
+  current?.kill();
+  current = null;
+  scrubTween?.kill();
+  scrubTween = null;
+  kfTween?.kill();
+  kfTween = null;
+  mm?.kill();
+  mm = null;
+  setQuickX = null;
+  setQuickY = null;
+  oncePlay.onclick = null;
+  scrubRange.oninput = null;
+  kfRange.oninput = null;
+  pinRange.oninput = null;
+  quickPad.onpointermove = null;
+  quickPad.onpointerdown = null;
+}
+
+function resetVisuals() {
+  box.style.cssText =
+    "position:absolute;top:40%;left:40px;width:70px;height:70px;background:linear-gradient(145deg,#3ecf8e,#1f8f5f);";
+  box2.style.cssText =
+    "position:absolute;top:40%;left:40px;width:70px;height:70px;opacity:0.3;background:linear-gradient(145deg,#f0c14a,#b8891f);";
+  MorePass.set(box, { x: 0, y: 0, scale: 1, rotation: 0, opacity: 1 });
+  MorePass.set(box2, { x: 0, y: 0, scale: 0.6, rotation: 0, opacity: 0.3 });
+
+  onceBox.style.cssText =
+    "position:absolute;top:40%;left:40px;width:70px;height:70px;background:linear-gradient(145deg,#3ecf8e,#1f8f5f);";
+  MorePass.set(onceBox, { x: 0, scale: 1, rotation: 0, opacity: 1 });
+  onceUsed = false;
+  onceMeta.textContent =
+    "first click plays · more clicks ignored until reset";
+
+  scrubBox.style.cssText =
+    "position:absolute;top:38%;left:36px;width:70px;height:70px;background:linear-gradient(145deg,#3ecf8e,#1f8f5f);";
+  MorePass.set(scrubBox, {
+    x: 0,
+    rotation: 0,
+    scale: 1,
+    backgroundColor: "#3ecf8e",
+  });
+  scrubRange.value = "0";
+  scrubVal.textContent = "0.00";
+
+  kfBox.style.cssText =
+    "position:absolute;top:38%;left:36px;width:70px;height:70px;background:linear-gradient(145deg,#3ecf8e,#1f8f5f);";
+  MorePass.set(kfBox, {
+    x: 0,
+    y: 0,
+    rotation: 0,
+    scale: 1,
+    backgroundColor: "#3ecf8e",
+  });
+  kfRange.value = "0";
+  kfVal.textContent = "0.00";
+
+  pinTrack.style.transform = "translateX(0)";
+  pinRange.value = "0";
+  pinVal.textContent = "0.00";
+  pinLabel.textContent = "background moves · card stays";
+
+  for (const dot of dots) {
+    dot.style.cssText =
+      "width:26px;height:26px;background:#3ecf8e;opacity:0.25;";
+    MorePass.set(dot, { y: 0, scale: 1, opacity: 0.25 });
+  }
+
+  MorePass.set(quickDot, { x: 0, y: 0 });
+  quickDot.style.left = "20px";
+  quickDot.style.top = "60px";
+
+  mmBox.textContent = window.matchMedia("(min-width: 800px)").matches
+    ? "≥800px"
+    : "<800px";
+  MorePass.set(mmBox, { x: 0, scale: 1 });
+  utilsFill.style.width = "0%";
+  utilsLabel.textContent = "0";
+}
+
+function runDemo(name: string) {
+  killAll();
+  resetVisuals();
+  activeDemo = name;
+  setActiveButton(name);
+
+  const demos: Record<string, () => void> = {
+    to() {
+      showPanel("panel-tween");
+      show(`MorePass.to(box, {
+  x: 420, rotation: 180, scale: 1.15,
   duration: 1, ease: "power2.out"
 })`);
-  current = MorePass.to(box, {
-    x: 520,
-    rotation: 180,
-    scale: 1.2,
-    duration: 1,
-    ease: "power2.out",
-  });
-});
+      current = MorePass.to(box, {
+        x: 420,
+        rotation: 180,
+        scale: 1.15,
+        duration: 1,
+        ease: "power2.out",
+      });
+      status("to()");
+    },
 
-document.querySelector("#from")!.addEventListener("click", () => {
-  resetBoxes();
-  show(`MorePass.from(box, {
-  x: 520, opacity: 0, scale: 0.4,
+    from() {
+      showPanel("panel-tween");
+      show(`MorePass.from(box, {
+  x: 420, opacity: 0, scale: 0.4,
   duration: 0.9, ease: "back.out"
 })`);
-  current = MorePass.from(box, {
-    x: 520,
-    opacity: 0,
-    scale: 0.4,
-    duration: 0.9,
-    ease: "back.out",
-  });
-});
-
-document.querySelector("#fromTo")!.addEventListener("click", () => {
-  resetBoxes();
-  show(`MorePass.fromTo(box2,
-  { x: 0, opacity: 0.2, scale: 0.6 },
-  { x: 480, opacity: 1, scale: 1, rotation: 20,
-    duration: 1.1, ease: "power3.out" }
-)`);
-  current = MorePass.fromTo(
-    box2,
-    { x: 0, opacity: 0.2, scale: 0.6 },
-    {
-      x: 480,
-      opacity: 1,
-      scale: 1,
-      rotation: 20,
-      duration: 1.1,
-      ease: "power3.out",
+      current = MorePass.from(box, {
+        x: 420,
+        opacity: 0,
+        scale: 0.4,
+        duration: 0.9,
+        ease: "back.out",
+      });
+      status("from()");
     },
-  );
-});
 
-document.querySelector("#timeline")!.addEventListener("click", () => {
-  resetBoxes();
-  show(`MorePass.timeline()
-  .to(box, { x: 420, rotation: 90, duration: 0.7, ease: "power2.out" })
-  .to(box2, { x: 280, opacity: 1, scale: 1, duration: 0.6 }, "-=0.35")
-  .to(box, { y: -40, scale: 1.15, duration: 0.4 }, "<0.1")
-  .to([box, box2], { rotation: 0, y: 0, scale: 1, duration: 0.5 })`);
-  current = MorePass.timeline()
-    .to(box, { x: 420, rotation: 90, duration: 0.7, ease: "power2.out" })
-    .to(
-      box2,
-      { x: 280, opacity: 1, scale: 1, duration: 0.6, ease: "power2.out" },
-      "-=0.35",
-    )
-    .to(box, { y: -40, scale: 1.15, duration: 0.4, ease: "sine.inOut" }, "<0.1")
-    .to([box, box2], {
-      rotation: 0,
-      y: 0,
-      scale: 1,
-      duration: 0.5,
-      ease: "power2.inOut",
-    });
-});
+    fromTo() {
+      showPanel("panel-tween");
+      show(`MorePass.fromTo(box2,
+  { x: 0, opacity: 0.25, scale: 0.6 },
+  { x: 380, opacity: 1, scale: 1, duration: 1 }
+)`);
+      current = MorePass.fromTo(
+        box2,
+        { x: 0, opacity: 0.25, scale: 0.6 },
+        {
+          x: 380,
+          opacity: 1,
+          scale: 1,
+          rotation: 14,
+          duration: 1,
+          ease: "power3.out",
+        },
+      );
+      status("fromTo()");
+    },
 
-document.querySelector("#stagger")!.addEventListener("click", () => {
-  resetBoxes();
-  stage.classList.add("show-dots");
-  show(`MorePass.to(".dot", {
-  y: -48, scale: 1.35, opacity: 1,
-  duration: 0.45, ease: "back.out",
+    timeline() {
+      showPanel("panel-tween");
+      show(`MorePass.timeline()
+  .to(box, { x: 340, duration: 0.55 })
+  .to(box2, { x: 220, opacity: 1, scale: 1 }, "-=0.2")`);
+      current = MorePass.timeline()
+        .to(box, { x: 340, rotation: 80, duration: 0.55, ease: "power2.out" })
+        .to(
+          box2,
+          { x: 220, opacity: 1, scale: 1, duration: 0.45, ease: "power2.out" },
+          "-=0.2",
+        );
+      status("timeline()");
+    },
+
+    stagger() {
+      showPanel("panel-stagger");
+      show(`MorePass.to(".dot", {
+  y: -36, opacity: 1,
   stagger: { each: 0.08, from: "center" }
 })`);
-  current = MorePass.to(dots, {
-    y: -48,
-    scale: 1.35,
-    opacity: 1,
-    duration: 0.45,
-    ease: "back.out",
-    stagger: { each: 0.08, from: "center" },
-  });
-});
+      current = MorePass.to(dots, {
+        y: -36,
+        scale: 1.25,
+        opacity: 1,
+        duration: 0.4,
+        ease: "back.out",
+        stagger: { each: 0.08, from: "center" },
+      });
+      status("stagger");
+    },
 
-document.querySelector("#scroll")!.addEventListener("click", () => {
-  resetBoxes();
-  show(`MorePass.to(scrollBox, {
-  x: 520, rotation: 180, backgroundColor: "#f0c14a",
+    color() {
+      showPanel("panel-tween");
+      show(`MorePass.to(box, { backgroundColor: "#f0c14a", x: 340 })`);
+      current = MorePass.to(box, {
+        backgroundColor: "#f0c14a",
+        x: 340,
+        duration: 1,
+        ease: "power2.out",
+      });
+      status("color");
+    },
+
+    overwrite() {
+      showPanel("panel-tween");
+      show(`MorePass.to(box, { x: 440, y: -28, duration: 2 })
+MorePass.to(box, { x: 160, duration: 1, delay: 0.3 })`);
+      current = MorePass.to(box, { x: 440, y: -28, duration: 2, ease: "none" });
+      MorePass.to(box, { x: 160, duration: 1, ease: "power2.out", delay: 0.3 });
+      status("overwrite");
+    },
+
+    yoyo() {
+      showPanel("panel-tween");
+      show(`MorePass.to(box, { x: 380, repeat: 3, yoyo: true })`);
+      current = MorePass.to(box, {
+        x: 380,
+        y: -20,
+        rotation: 10,
+        duration: 0.5,
+        ease: "sine.inOut",
+        repeat: 3,
+        yoyo: true,
+      });
+      status("yoyo");
+    },
+
+    keyframes() {
+      showPanel("panel-tween");
+      show(`MorePass.to(box, {
+  duration: 0.45,
+  ease: "power2.inOut",
+  keyframes: [
+    { x: 180, rotation: 0 },
+    { x: 300, y: -36, scale: 1.2 },
+    { x: 420, y: 0, rotation: 180, backgroundColor: "#f0c14a" },
+  ],
+})`);
+      current = MorePass.to(box, {
+        duration: 0.45,
+        ease: "power2.inOut",
+        keyframes: [
+          { x: 180, rotation: 0 },
+          { x: 300, y: -36, scale: 1.2, backgroundColor: "#5ad39a" },
+          {
+            x: 420,
+            y: 0,
+            rotation: 180,
+            scale: 1,
+            backgroundColor: "#f0c14a",
+          },
+        ],
+      });
+      status("keyframes · multi-step in one call");
+    },
+
+    kfScrub() {
+      showPanel("panel-kf");
+      show(`const tl = MorePass.to(box, {
+  paused: true,
+  duration: 0.6,
   ease: "none",
-  scrollTrigger: {
-    trigger: "#scroll-section",
-    start: "top 80%",
-    end: "bottom 20%",
-    scrub: true,
+  keyframes: [
+    { x: 120 },
+    { x: 260, y: -40, backgroundColor: "#5ad39a" },
+    { x: 400, y: 0, rotation: 180, backgroundColor: "#f0c14a" },
+  ],
+})
+// slider → tl.progress(t)`);
+      kfTween = MorePass.to(kfBox, {
+        paused: true,
+        duration: 0.6,
+        ease: "none",
+        keyframes: [
+          { x: 120, rotation: 0 },
+          { x: 260, y: -40, scale: 1.15, backgroundColor: "#5ad39a" },
+          {
+            x: 400,
+            y: 0,
+            rotation: 180,
+            scale: 1,
+            backgroundColor: "#f0c14a",
+          },
+        ],
+      });
+      kfTween.progress(0);
+      current = kfTween;
+
+      kfRange.oninput = () => {
+        const t = Number(kfRange.value) / 1000;
+        kfTween?.progress(t);
+        kfVal.textContent = t.toFixed(2);
+        status(`kf scrub · progress ${t.toFixed(2)}`);
+      };
+      status("kf scrub · drag slider through keyframes");
+    },
+
+    scrub() {
+      showPanel("panel-scrub");
+      show(`const tw = MorePass.to(box, {
+  x: 400, rotation: 180, backgroundColor: "#f0c14a",
+  ease: "none", paused: true,
+})
+// drag slider → tw.progress(t)`);
+      scrubTween = MorePass.to(scrubBox, {
+        x: 400,
+        rotation: 180,
+        backgroundColor: "#f0c14a",
+        scale: 1.15,
+        duration: 1,
+        ease: "none",
+        paused: true,
+      });
+      scrubTween.progress(0);
+      current = scrubTween;
+
+      scrubRange.oninput = () => {
+        const t = Number(scrubRange.value) / 1000;
+        scrubTween?.progress(t);
+        scrubVal.textContent = t.toFixed(2);
+        status(`scrub · progress ${t.toFixed(2)}`);
+      };
+      status("scrub · drag the slider");
+    },
+
+    pin() {
+      showPanel("panel-pin");
+      show(`// pin concept without page scroll:
+// card stays fixed in panel, world scrolls underneath
+track.style.transform = \`translateX(\${-progress * 420}px)\``);
+      pinRange.oninput = () => {
+        const t = Number(pinRange.value) / 1000;
+        pinTrack.style.transform = `translateX(${-t * 460}px)`;
+        pinVal.textContent = t.toFixed(2);
+        pinLabel.textContent =
+          t > 0.08 && t < 0.92
+            ? `pinned · ${t.toFixed(2)}`
+            : `idle · ${t.toFixed(2)}`;
+        status(
+          t > 0.08 && t < 0.92
+            ? "pin · card fixed · track moves"
+            : "pin · idle edges",
+        );
+      };
+      status("pin · drag slider — card stays, world moves");
+    },
+
+    once() {
+      showPanel("panel-once");
+      show(`MorePass.to(box, {
+  x: 360, scale: 1.2, duration: 0.75, ease: "back.out",
+  // once: ignore repeat triggers until reset
+})`);
+      oncePlay.onclick = () => {
+        if (onceUsed) {
+          status("once · already played — hit reset");
+          onceMeta.textContent = "already played — press reset";
+          return;
+        }
+        onceUsed = true;
+        current?.kill();
+        current = MorePass.to(onceBox, {
+          x: 360,
+          scale: 1.2,
+          rotation: 16,
+          duration: 0.75,
+          ease: "back.out",
+        });
+        onceMeta.textContent = "played · clicks ignored until reset";
+        status("once · played");
+      };
+      status("once · click play once");
+    },
+
+    quickTo() {
+      showPanel("panel-quick");
+      show(`const setX = MorePass.quickTo(dot, "x", { duration: 0.35 })
+const setY = MorePass.quickTo(dot, "y", { duration: 0.35 })
+pad.onpointermove = (e) => {
+  setX(e.offsetX); setY(e.offsetY)
+}`);
+      MorePass.set(quickDot, { x: 20, y: 60 });
+      setQuickX = quickTo(quickDot, "x", { duration: 0.35, ease: "power3.out" });
+      setQuickY = quickTo(quickDot, "y", { duration: 0.35, ease: "power3.out" });
+      quickPad.onpointerdown = onQuickMove;
+      quickPad.onpointermove = (e) => {
+        if (e.buttons || e.pointerType === "touch") onQuickMove(e);
+        else onQuickMove(e);
+      };
+      status("quickTo · move over the pad");
+    },
+
+    matchMedia() {
+      showPanel("panel-mm");
+      show(`MorePass.matchMedia({
+  "(min-width: 800px)": () => {
+    const tw = MorePass.to(box, { x: 140, scale: 1.12 })
+    return () => tw.kill()
   },
+  "(max-width: 799px)": () => MorePass.set(box, { x: 0, scale: 0.85 }),
 })`);
-  armScrollDemo();
-  scrollSection.scrollIntoView({ behavior: "smooth", block: "center" });
-});
+      mm = matchMedia({
+        "(min-width: 800px)": () => {
+          mmBox.textContent = "≥800px";
+          status("matchMedia · wide");
+          const tw = MorePass.to(mmBox, {
+            x: 140,
+            scale: 1.12,
+            duration: 0.45,
+            ease: "power2.out",
+          });
+          return () => tw.kill();
+        },
+        "(max-width: 799px)": () => {
+          mmBox.textContent = "<800px";
+          status("matchMedia · narrow");
+          MorePass.set(mmBox, { x: 0, scale: 0.85 });
+        },
+      });
+    },
 
-document.querySelector("#color")!.addEventListener("click", () => {
-  resetBoxes();
-  show(`MorePass.to(box, {
-  backgroundColor: "#f0c14a",
-  x: 360, duration: 1, ease: "power2.out"
+    utils() {
+      showPanel("panel-utils");
+      show(`MorePass.to(t, {
+  p: 100, duration: 1.1,
+  onUpdate: () => {
+    fill.style.width = MorePass.utils.mapRange(0, 100, 0, 100, t.p) + "%"
+  }
 })`);
-  current = MorePass.to(box, {
-    backgroundColor: "#f0c14a",
-    x: 360,
-    duration: 1,
-    ease: "power2.out",
-  });
-});
+      const t = { p: 0 };
+      current = MorePass.to(t, {
+        p: 100,
+        duration: 1.1,
+        ease: "power2.inOut",
+        onUpdate: () => {
+          const w = MorePass.utils.mapRange(0, 100, 0, 100, t.p);
+          const snapped = MorePass.utils.snap(5, w);
+          utilsFill.style.width = `${w}%`;
+          utilsLabel.textContent = String(snapped);
+          status(
+            `utils · ${w.toFixed(0)} · snap ${snapped} · clamp ${MorePass.utils.clamp(w, 20, 80).toFixed(0)}`,
+          );
+        },
+      });
+    },
+  };
 
-document.querySelector("#overwrite")!.addEventListener("click", () => {
-  resetBoxes();
-  show(`// second tween steals x; y keeps going
-MorePass.to(box, { x: 500, y: -50, duration: 2, ease: "none" })
-MorePass.to(box, { x: 200, duration: 1, ease: "power2.out", delay: 0.4 })`);
-  current = MorePass.to(box, {
-    x: 500,
-    y: -50,
-    duration: 2,
-    ease: "none",
-  });
-  MorePass.to(box, {
-    x: 200,
-    duration: 1,
-    ease: "power2.out",
-    delay: 0.4,
-  });
-});
+  demos[name]?.();
+}
 
-document.querySelector("#yoyo")!.addEventListener("click", () => {
-  resetBoxes();
-  show(`MorePass.to(box, {
-  x: 500, y: -30, rotation: 12,
-  duration: 0.6, ease: "sine.inOut",
-  repeat: 3, yoyo: true
-})`);
-  current = MorePass.to(box, {
-    x: 500,
-    y: -30,
-    rotation: 12,
-    duration: 0.6,
-    ease: "sine.inOut",
-    repeat: 3,
-    yoyo: true,
+for (const btn of buttons) {
+  btn.addEventListener("click", () => {
+    const name = btn.dataset.demo;
+    if (name) runDemo(name);
   });
-});
+}
 
 document.querySelector("#pause")!.addEventListener("click", () => {
-  if (!current) return;
-  if (current.isActive()) current.pause();
-  else current.play();
+  if (!current) {
+    status("nothing to pause");
+    return;
+  }
+  if (current.isActive()) {
+    current.pause();
+    status("paused");
+  } else {
+    current.play();
+    status("playing");
+  }
 });
 
 document.querySelector("#reset")!.addEventListener("click", () => {
-  resetBoxes();
-  show("// reset");
+  runDemo(activeDemo);
 });
 
-resetBoxes();
-armScrollDemo();
-show(`import MorePass from "morepass"
-
-MorePass.to(".box", {
-  x: 520,
-  scrollTrigger: { start: "top 80%", scrub: true },
-})`);
+runDemo("to");

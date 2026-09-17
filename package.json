@@ -1,6 +1,6 @@
 {
   "name": "morepass",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "MorePass — a small, modern tween library",
   "type": "module",
   "main": "./dist/morepass.cjs",
@@ -14,7 +14,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "skills"
   ],
   "sideEffects": false,
   "scripts": {

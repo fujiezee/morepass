@@ -14,25 +14,41 @@ type Action =
   | "reverse"
   | "none";
 
+type ScrollRoot = Window | Element;
+
 const instances = new Set<ScrollTrigger>();
-let listening = false;
+const scrollerRefs = new Map<ScrollRoot, { count: number; onScroll: () => void }>();
+let resizeBound = false;
 let ticking = false;
 
-function ensureListeners() {
-  if (listening || typeof window === "undefined") return;
-  listening = true;
-  window.addEventListener("scroll", onScroll, { passive: true });
+function isWindowScroller(value: ScrollRoot): value is Window {
+  return value === window;
+}
+
+function resolveScroller(
+  value: ScrollTriggerVars["scroller"] | undefined,
+): ScrollRoot {
+  if (!value || value === window) return window;
+  if (typeof Element !== "undefined" && value instanceof Element) return value;
+  if (typeof value === "string") {
+    return document.querySelector(value) ?? window;
+  }
+  const el = resolveElement(value as Target);
+  return el ?? window;
+}
+
+function ensureResize() {
+  if (resizeBound || typeof window === "undefined") return;
+  resizeBound = true;
   window.addEventListener("resize", onResize, { passive: true });
 }
 
-function teardownListeners() {
-  if (!listening || instances.size > 0) return;
-  listening = false;
-  window.removeEventListener("scroll", onScroll);
-  window.removeEventListener("resize", onResize);
+function onResize() {
+  for (const inst of instances) inst.refresh();
+  queueAll();
 }
 
-function onScroll() {
+function queueAll() {
   if (ticking) return;
   ticking = true;
   requestAnimationFrame(() => {
@@ -41,9 +57,25 @@ function onScroll() {
   });
 }
 
-function onResize() {
-  for (const inst of instances) inst.refresh();
-  onScroll();
+function bindScroller(scroller: ScrollRoot) {
+  const existing = scrollerRefs.get(scroller);
+  if (existing) {
+    existing.count += 1;
+    return;
+  }
+  const onScroll = () => queueAll();
+  scrollerRefs.set(scroller, { count: 1, onScroll });
+  scroller.addEventListener("scroll", onScroll, { passive: true });
+  ensureResize();
+}
+
+function unbindScroller(scroller: ScrollRoot) {
+  const existing = scrollerRefs.get(scroller);
+  if (!existing) return;
+  existing.count -= 1;
+  if (existing.count > 0) return;
+  scroller.removeEventListener("scroll", existing.onScroll);
+  scrollerRefs.delete(scroller);
 }
 
 function resolveElement(target: Target | Element | undefined): Element | null {
@@ -65,9 +97,7 @@ function parsePart(part: string): {
   if (p === "top") return { kind: "top" };
   if (p === "center" || p === "centre" || p === "middle") return { kind: "center" };
   if (p === "bottom") return { kind: "bottom" };
-  if (p.endsWith("%")) {
-    return { kind: "pct", pct: parseFloat(p) / 100 };
-  }
+  if (p.endsWith("%")) return { kind: "pct", pct: parseFloat(p) / 100 };
   const n = parseFloat(p);
   if (!Number.isNaN(n)) return { kind: "pct", pct: n > 1 ? n / 100 : n };
   return { kind: "top" };
@@ -76,32 +106,60 @@ function parsePart(part: string): {
 function parseStartEnd(value: string | undefined, fallback: string) {
   const raw = (value ?? fallback).trim();
   const parts = raw.split(/\s+/);
-  const triggerPart = parts[0] ?? "top";
-  const scrollerPart = parts[1] ?? "bottom";
   return {
-    trigger: parsePart(triggerPart),
-    scroller: parsePart(scrollerPart),
+    trigger: parsePart(parts[0] ?? "top"),
+    view: parsePart(parts[1] ?? "bottom"),
   };
 }
 
-function triggerPoint(
-  rect: { top: number; height: number },
-  scrollY: number,
-  part: ReturnType<typeof parsePart>,
-): number {
-  const absTop = rect.top + scrollY;
-  if (part.kind === "top") return absTop;
-  if (part.kind === "center") return absTop + rect.height / 2;
-  if (part.kind === "bottom") return absTop + rect.height;
-  return absTop + rect.height * (part.pct ?? 0);
+function getScrollTop(scroller: ScrollRoot): number {
+  if (isWindowScroller(scroller)) {
+    return window.scrollY || window.pageYOffset || 0;
+  }
+  return scroller.scrollTop;
 }
 
-function scrollerOffset(part: ReturnType<typeof parsePart>): number {
-  const vh = typeof window !== "undefined" ? window.innerHeight : 0;
+function getViewSize(scroller: ScrollRoot): number {
+  if (isWindowScroller(scroller)) return window.innerHeight;
+  return scroller.clientHeight;
+}
+
+function getTriggerMetrics(
+  trigger: Element,
+  scroller: ScrollRoot,
+): { top: number; height: number } {
+  const scrollTop = getScrollTop(scroller);
+  if (isWindowScroller(scroller)) {
+    const rect = trigger.getBoundingClientRect();
+    return { top: rect.top + scrollTop, height: rect.height };
+  }
+  const sRect = scroller.getBoundingClientRect();
+  const tRect = trigger.getBoundingClientRect();
+  return {
+    top: tRect.top - sRect.top + scrollTop,
+    height: tRect.height,
+  };
+}
+
+function pointOnTrigger(
+  metrics: { top: number; height: number },
+  part: ReturnType<typeof parsePart>,
+): number {
+  if (part.kind === "top") return metrics.top;
+  if (part.kind === "center") return metrics.top + metrics.height / 2;
+  if (part.kind === "bottom") return metrics.top + metrics.height;
+  return metrics.top + metrics.height * (part.pct ?? 0);
+}
+
+function viewOffset(
+  scroller: ScrollRoot,
+  part: ReturnType<typeof parsePart>,
+): number {
+  const size = getViewSize(scroller);
   if (part.kind === "top") return 0;
-  if (part.kind === "center") return vh / 2;
-  if (part.kind === "bottom") return vh;
-  return vh * (part.pct ?? 0);
+  if (part.kind === "center") return size / 2;
+  if (part.kind === "bottom") return size;
+  return size * (part.pct ?? 0);
 }
 
 function clamp01(n: number) {
@@ -168,6 +226,7 @@ interface PinState {
     left: string;
     width: string;
     zIndex: string;
+    margin: string;
   };
   pinTop: number;
   pinLeft: number;
@@ -178,6 +237,7 @@ interface PinState {
 
 class ScrollTrigger implements ScrollTriggerInstance {
   private triggerEl: Element | null = null;
+  private scroller: ScrollRoot = window;
   private startScroll = 0;
   private endScroll = 1;
   private _progress = 0;
@@ -201,6 +261,7 @@ class ScrollTrigger implements ScrollTriggerInstance {
     this.animation = vars.animation;
     this.actions = parseToggleActions(vars.toggleActions);
     this.scrubSmooth = typeof vars.scrub === "number" ? vars.scrub : 0;
+    this.scroller = resolveScroller(vars.scroller);
 
     this.animation?.pause();
     if (vars.scrub) this.animation?.progress(0);
@@ -209,66 +270,56 @@ class ScrollTrigger implements ScrollTriggerInstance {
     this.setupPin();
     this.refresh();
     instances.add(this);
-    ensureListeners();
+    bindScroller(this.scroller);
     this.update();
   }
 
   get progress() {
     return this._progress;
   }
-
   get direction() {
     return this._direction;
   }
-
   get isActive() {
     return this._isActive;
   }
-
   get start() {
     return this.startScroll;
   }
-
   get end() {
     return this.endScroll;
   }
 
   refresh() {
     if (this.killed || typeof window === "undefined") return;
-
-    // Temporarily unpin to measure natural layout
     const wasPinned = this.pin?.active;
     if (wasPinned) this.applyPin(false, "before");
 
     const el = this.triggerEl;
     if (!el) {
       this.startScroll = 0;
-      this.endScroll = window.innerHeight;
+      this.endScroll = getViewSize(this.scroller);
       return;
     }
 
-    const scrollY = window.scrollY || window.pageYOffset || 0;
-    const rect = el.getBoundingClientRect();
+    const metrics = getTriggerMetrics(el, this.scroller);
     const startParts = parseStartEnd(this.vars.start, "top bottom");
     const endParts = parseStartEnd(this.vars.end, "bottom top");
 
     this.startScroll =
-      triggerPoint(rect, scrollY, startParts.trigger) -
-      scrollerOffset(startParts.scroller);
+      pointOnTrigger(metrics, startParts.trigger) -
+      viewOffset(this.scroller, startParts.view);
     this.endScroll =
-      triggerPoint(rect, scrollY, endParts.trigger) -
-      scrollerOffset(endParts.scroller);
+      pointOnTrigger(metrics, endParts.trigger) -
+      viewOffset(this.scroller, endParts.view);
 
     if (this.endScroll <= this.startScroll) {
       this.endScroll = this.startScroll + 1;
     }
 
     if (this.pin) {
-      const pinRect = this.pin.el.getBoundingClientRect();
-      this.pin.pinTop = pinRect.top;
-      this.pin.pinLeft = pinRect.left;
-      this.pin.width = pinRect.width;
-      this.pin.height = pinRect.height;
+      const m = getTriggerMetrics(this.pin.el, this.scroller);
+      this.pin.height = m.height;
       if (this.pin.spacer && this.vars.pinSpacing !== false) {
         const distance = this.endScroll - this.startScroll;
         this.pin.spacer.style.height = `${this.pin.height + distance}px`;
@@ -287,9 +338,9 @@ class ScrollTrigger implements ScrollTriggerInstance {
       return;
     }
 
-    const scrollY = window.scrollY || window.pageYOffset || 0;
+    const scrollTop = getScrollTop(this.scroller);
     const raw =
-      (scrollY - this.startScroll) / (this.endScroll - this.startScroll);
+      (scrollTop - this.startScroll) / (this.endScroll - this.startScroll);
     const next = clamp01(raw);
     const prev = this.prevProgress;
 
@@ -315,7 +366,6 @@ class ScrollTrigger implements ScrollTriggerInstance {
 
     if (wasActive !== this._isActive) this.vars.onToggle?.(this);
 
-    // Pin state
     if (this.pin) {
       if (next <= 0) this.applyPin(false, "before");
       else if (next >= 1) this.applyPin(false, "after");
@@ -330,21 +380,18 @@ class ScrollTrigger implements ScrollTriggerInstance {
 
     this.vars.onUpdate?.(this);
     this.prevProgress = next;
-
-    if (this.vars.once && next >= 1) {
-      this.completedOnce = true;
-    }
+    if (this.vars.once && next >= 1) this.completedOnce = true;
   }
 
   kill() {
     if (this.killed) return;
     this.killed = true;
     instances.delete(this);
+    unbindScroller(this.scroller);
     if (this.scrubRaf) cancelAnimationFrame(this.scrubRaf);
     this.teardownPin();
     for (const m of this.markers) m.remove();
     this.markers = [];
-    teardownListeners();
   }
 
   private setupPin() {
@@ -373,6 +420,7 @@ class ScrollTrigger implements ScrollTriggerInstance {
         left: pinTarget.style.left,
         width: pinTarget.style.width,
         zIndex: pinTarget.style.zIndex,
+        margin: pinTarget.style.margin,
       },
       pinTop: 0,
       pinLeft: 0,
@@ -387,32 +435,33 @@ class ScrollTrigger implements ScrollTriggerInstance {
     if (!pin) return;
 
     if (active) {
-      if (pin.active) return;
+      if (pin.active) {
+        // Keep fixed element aligned to scroller viewport while scrolling
+        if (!isWindowScroller(this.scroller)) {
+          const host = this.scroller.getBoundingClientRect();
+          pin.el.style.top = `${host.top + pin.pinTop}px`;
+          pin.el.style.left = `${host.left + pin.pinLeft}px`;
+        }
+        return;
+      }
+      const host = isWindowScroller(this.scroller)
+        ? { top: 0, left: 0 }
+        : this.scroller.getBoundingClientRect();
       const rect = pin.el.getBoundingClientRect();
-      pin.pinTop = rect.top;
-      pin.pinLeft = rect.left;
+      pin.pinTop = rect.top - host.top;
+      pin.pinLeft = rect.left - host.left;
       pin.width = rect.width;
       pin.height = rect.height;
       pin.el.style.position = "fixed";
-      pin.el.style.top = `${pin.pinTop}px`;
-      pin.el.style.left = `${pin.pinLeft}px`;
+      pin.el.style.top = `${host.top + pin.pinTop}px`;
+      pin.el.style.left = `${host.left + pin.pinLeft}px`;
       pin.el.style.width = `${pin.width}px`;
-      pin.el.style.zIndex = pin.el.style.zIndex || "10";
+      pin.el.style.margin = "0";
+      pin.el.style.zIndex = pin.el.style.zIndex || "20";
       pin.active = true;
       return;
     }
 
-    if (!pin.active && rest === "before") {
-      // ensure natural flow
-      pin.el.style.position = pin.saved.position;
-      pin.el.style.top = pin.saved.top;
-      pin.el.style.left = pin.saved.left;
-      pin.el.style.width = pin.saved.width;
-      pin.el.style.zIndex = pin.saved.zIndex;
-      return;
-    }
-
-    // after pin range: place as absolute within flow using spacer offset
     pin.active = false;
     if (rest === "after") {
       const distance = this.endScroll - this.startScroll;
@@ -421,13 +470,16 @@ class ScrollTrigger implements ScrollTriggerInstance {
       pin.el.style.left = pin.saved.left;
       pin.el.style.width = pin.saved.width;
       pin.el.style.zIndex = pin.saved.zIndex;
-    } else {
-      pin.el.style.position = pin.saved.position;
-      pin.el.style.top = pin.saved.top;
-      pin.el.style.left = pin.saved.left;
-      pin.el.style.width = pin.saved.width;
-      pin.el.style.zIndex = pin.saved.zIndex;
+      pin.el.style.margin = pin.saved.margin;
+      return;
     }
+
+    pin.el.style.position = pin.saved.position;
+    pin.el.style.top = pin.saved.top;
+    pin.el.style.left = pin.saved.left;
+    pin.el.style.width = pin.saved.width;
+    pin.el.style.zIndex = pin.saved.zIndex;
+    pin.el.style.margin = pin.saved.margin;
   }
 
   private teardownPin() {
@@ -488,7 +540,9 @@ class ScrollTrigger implements ScrollTriggerInstance {
     for (const m of this.markers) m.remove();
     this.markers = [];
     if (!this.vars.markers || typeof document === "undefined") return;
-
+    const host = isWindowScroller(this.scroller)
+      ? document.body
+      : (this.scroller as Element);
     const mk = (label: string, y: number, color: string) => {
       const el = document.createElement("div");
       el.textContent = label;
@@ -503,10 +557,9 @@ class ScrollTrigger implements ScrollTriggerInstance {
         "color:#111",
         "pointer-events:none",
       ].join(";");
-      document.body.appendChild(el);
+      host.appendChild(el);
       this.markers.push(el);
     };
-
     mk("start", this.startScroll, "#3ecf8e");
     mk("end", this.endScroll, "#f0c14a");
   }
@@ -531,7 +584,6 @@ export const scrollTrigger = {
   },
 };
 
-/** Test helper */
 export function _scrollTriggerReset() {
   scrollTrigger.killAll();
 }
