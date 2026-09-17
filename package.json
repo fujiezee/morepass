@@ -28,12 +28,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/zhuifeng2316-cmyk/morepass.git"
+    "url": "git+https://github.com/fujiezee/morepass.git"
   },
   "bugs": {
-    "url": "https://github.com/zhuifeng2316-cmyk/morepass/issues"
+    "url": "https://github.com/fujiezee/morepass/issues"
   },
-  "homepage": "https://github.com/zhuifeng2316-cmyk/morepass#readme",
+  "homepage": "https://github.com/fujiezee/morepass#readme",
   "publishConfig": {
     "access": "public"
   },
