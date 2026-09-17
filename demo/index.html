@@ -249,6 +249,32 @@
         background: var(--accent-2);
       }
 
+      #css-card {
+        width: min(280px, 70vw);
+        height: 100px;
+        display: grid;
+        place-items: center;
+        background: rgba(62, 207, 142, 0.15);
+        border: 1px dashed var(--line);
+        font-weight: 700;
+        transform: translateY(calc(var(--lift, 0) * -1px));
+        box-shadow: 0 calc(var(--lift, 0) * 0.4px) calc(var(--lift, 0) * 1.2px)
+          rgba(0, 0, 0, 0.35);
+      }
+
+      #attr-svg {
+        width: min(280px, 70vw);
+        height: 160px;
+        border: 1px dashed var(--line);
+        background: rgba(0, 0, 0, 0.15);
+      }
+
+      #delay-meta {
+        font: 0.85rem "JetBrains Mono", monospace;
+        color: var(--accent-2);
+        min-height: 1.2em;
+      }
+
       #quick-pad {
         width: min(420px, 80vw);
         height: 160px;
@@ -313,6 +339,10 @@
         <button data-demo="quickTo" class="new">quickTo</button>
         <button data-demo="context" class="new">context</button>
         <button data-demo="autoAlpha" class="new">autoAlpha</button>
+        <button data-demo="delayedCall" class="new">delayedCall</button>
+        <button data-demo="clearProps" class="new">clearProps</button>
+        <button data-demo="cssVar" class="new">css var</button>
+        <button data-demo="attr" class="new">attr</button>
         <button data-demo="matchMedia" class="new">matchMedia</button>
         <button data-demo="utils" class="new">utils</button>
         <button id="pause">pause</button>
@@ -416,6 +446,37 @@
           <div class="center">
             <div id="utils-bar"><div id="utils-fill"></div></div>
             <div class="meta" id="utils-label">0</div>
+          </div>
+        </div>
+
+        <div class="panel" id="panel-delay">
+          <div class="playfield">
+            <div class="box" id="delay-box"></div>
+          </div>
+          <div class="center">
+            <div class="meta" id="delay-meta">waiting…</div>
+          </div>
+        </div>
+
+        <div class="panel" id="panel-css">
+          <div class="center">
+            <div id="css-card">--lift</div>
+            <span class="meta" id="css-meta">lift 0</span>
+          </div>
+        </div>
+
+        <div class="panel" id="panel-attr">
+          <div class="center">
+            <svg id="attr-svg" viewBox="0 0 280 160" aria-label="attr demo">
+              <circle
+                id="attr-circle"
+                cx="140"
+                cy="80"
+                r="18"
+                fill="#3ecf8e"
+              />
+            </svg>
+            <span class="meta" id="attr-meta">r = 18</span>
           </div>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import MorePass, {
   context,
+  delayedCall,
   matchMedia,
   quickTo,
   type TweenControls,
@@ -23,6 +24,12 @@ const onceMeta = document.querySelector<HTMLElement>("#once-meta")!;
 const mmBox = document.querySelector<HTMLElement>("#mm-box")!;
 const utilsFill = document.querySelector<HTMLElement>("#utils-fill")!;
 const utilsLabel = document.querySelector<HTMLElement>("#utils-label")!;
+const delayBox = document.querySelector<HTMLElement>("#delay-box")!;
+const delayMeta = document.querySelector<HTMLElement>("#delay-meta")!;
+const cssCard = document.querySelector<HTMLElement>("#css-card")!;
+const cssMeta = document.querySelector<HTMLElement>("#css-meta")!;
+const attrCircle = document.querySelector<SVGCircleElement>("#attr-circle")!;
+const attrMeta = document.querySelector<HTMLElement>("#attr-meta")!;
 const quickPad = document.querySelector<HTMLElement>("#quick-pad")!;
 const quickDot = document.querySelector<HTMLElement>("#quick-dot")!;
 const codeEl = document.querySelector<HTMLElement>("#code")!;
@@ -152,6 +159,18 @@ function resetVisuals() {
   MorePass.set(mmBox, { x: 0, scale: 1 });
   utilsFill.style.width = "0%";
   utilsLabel.textContent = "0";
+
+  delayBox.style.cssText =
+    "position:absolute;top:40%;left:40px;width:70px;height:70px;background:linear-gradient(145deg,#3ecf8e,#1f8f5f);";
+  MorePass.set(delayBox, { x: 0, scale: 1 });
+  delayMeta.textContent = "waiting…";
+
+  cssCard.style.setProperty("--lift", "0");
+  cssMeta.textContent = "lift 0";
+
+  attrCircle.setAttribute("r", "18");
+  attrCircle.setAttribute("fill", "#3ecf8e");
+  attrMeta.textContent = "r = 18";
 }
 
 function runDemo(name: string) {
@@ -486,6 +505,77 @@ pad.onpointermove = (e) => {
       status("autoAlpha · fades then hides");
     },
 
+    delayedCall() {
+      showPanel("panel-delay");
+      show(`MorePass.delayedCall(0.55, () => {
+  MorePass.to(box, { x: 360, scale: 1.15, duration: 0.55 })
+})`);
+      delayMeta.textContent = "delay 0.55s…";
+      status("delayedCall · waiting");
+      current = delayedCall(0.55, () => {
+        delayMeta.textContent = "fired → tween";
+        current = MorePass.to(delayBox, {
+          x: 360,
+          scale: 1.15,
+          duration: 0.55,
+          ease: "back.out",
+        });
+        status("delayedCall · fired");
+      });
+    },
+
+    clearProps() {
+      showPanel("panel-tween");
+      show(`MorePass.to(box, {
+  x: 320, opacity: 0.35, duration: 0.7,
+  clearProps: "opacity,x",
+})`);
+      current = MorePass.to(box, {
+        x: 320,
+        opacity: 0.35,
+        duration: 0.7,
+        ease: "power2.out",
+        clearProps: "opacity,x",
+        onComplete: () => status("clearProps · inline styles cleared"),
+      });
+      status("clearProps · animating then clearing");
+    },
+
+    cssVar() {
+      showPanel("panel-css");
+      show(`MorePass.to(card, {
+  "--lift": 28, duration: 0.8, ease: "power2.out",
+})`);
+      cssCard.style.setProperty("--lift", "0");
+      current = MorePass.to(cssCard, {
+        "--lift": 28,
+        duration: 0.85,
+        ease: "power2.out",
+        onUpdate: () => {
+          const v = cssCard.style.getPropertyValue("--lift") || "0";
+          cssMeta.textContent = `lift ${Number(v).toFixed(1)}`;
+        },
+      });
+      status("css var · --lift");
+    },
+
+    attr() {
+      showPanel("panel-attr");
+      show(`MorePass.to(circle, {
+  attr: { r: 56 },
+  duration: 0.9, ease: "power2.out",
+})`);
+      current = MorePass.to(attrCircle, {
+        attr: { r: 56 },
+        duration: 0.9,
+        ease: "power2.out",
+        onUpdate: () => {
+          attrMeta.textContent = `r = ${attrCircle.getAttribute("r")}`;
+        },
+      });
+      status("attr · SVG circle r");
+    },
+
     matchMedia() {
       showPanel("panel-mm");
       show(`MorePass.matchMedia({
@@ -517,13 +607,16 @@ pad.onpointermove = (e) => {
 
     utils() {
       showPanel("panel-utils");
-      show(`MorePass.to(t, {
+      show(`const dist = MorePass.utils.distribute({ amount: 100, from: "start" })
+MorePass.to(t, {
   p: 100, duration: 1.1,
   onUpdate: () => {
-    fill.style.width = MorePass.utils.mapRange(0, 100, 0, 100, t.p) + "%"
+    const w = MorePass.utils.mapRange(0, 100, 0, 100, t.p)
+    fill.style.width = w + "%"
   }
 })`);
       const t = { p: 0 };
+      const dist = MorePass.utils.distribute({ amount: 100, from: "start" });
       current = MorePass.to(t, {
         p: 100,
         duration: 1.1,
@@ -531,10 +624,11 @@ pad.onpointermove = (e) => {
         onUpdate: () => {
           const w = MorePass.utils.mapRange(0, 100, 0, 100, t.p);
           const snapped = MorePass.utils.snap(5, w);
+          const wrapped = MorePass.utils.wrap(0, 100, w + 10);
           utilsFill.style.width = `${w}%`;
           utilsLabel.textContent = String(snapped);
           status(
-            `utils · ${w.toFixed(0)} · snap ${snapped} · clamp ${MorePass.utils.clamp(w, 20, 80).toFixed(0)}`,
+            `utils · ${w.toFixed(0)} · snap ${snapped} · wrap ${wrapped.toFixed(0)} · dist0 ${dist(0, null, [0, 1, 2]).toFixed(0)}`,
           );
         },
       });
