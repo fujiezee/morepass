@@ -24,6 +24,10 @@ export function expandPropKeys(keys: string[]): string[] {
     } else if (key === "opacity") {
       out.add("autoAlpha");
     }
+    if (key === "clipPath" || key === "clip-path") {
+      out.add("clipPath");
+      out.add("clip-path");
+    }
   }
   return [...out];
 }

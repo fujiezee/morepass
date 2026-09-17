@@ -837,6 +837,92 @@ tw.totalProgress(0.5) // mid of full run incl. repeats`);
       requestAnimationFrame(tick);
     },
 
+    clipPath() {
+      showPanel("panel-tween");
+      show(`MorePass.to(box, {
+  clipPath: "inset(12% 18% 12% 18% round 16px)",
+  duration: 1, ease: "power2.inOut",
+})`);
+      box.style.clipPath = "inset(0% 0% 0% 0%)";
+      current = MorePass.to(box, {
+        clipPath: "inset(12% 18% 12% 18%)",
+        duration: 1,
+        ease: "power2.inOut",
+        yoyo: true,
+        repeat: 1,
+      });
+      status("clipPath · inset(…) numbers");
+    },
+
+    axis() {
+      showPanel("panel-stagger");
+      show(`MorePass.to(".dot", {
+  y: -36, opacity: 1,
+  stagger: { each: 0.07, from: "start", grid: [3, 2], axis: "x" },
+})`);
+      current = MorePass.to(dots, {
+        y: -36,
+        scale: 1.25,
+        opacity: 1,
+        duration: 0.4,
+        ease: "back.out",
+        stagger: { each: 0.07, from: "start", grid: [3, 2], axis: "x" },
+      });
+      status("axis · stagger by column (x)");
+    },
+
+    steps() {
+      showPanel("panel-tween");
+      show(`MorePass.to(box, {
+  x: 360, duration: 1.2, ease: "steps(6)",
+})`);
+      current = MorePass.to(box, {
+        x: 360,
+        duration: 1.2,
+        ease: "steps(6)",
+      });
+      status("steps · ease steps(6)");
+    },
+
+    overwriteCb() {
+      showPanel("panel-tween");
+      show(`MorePass.to(box, {
+  x: 400, duration: 2,
+  onOverwrite: () => console.log("props claimed"),
+})
+MorePass.to(box, { x: 60, duration: 0.5, delay: 0.35 })`);
+      current = MorePass.to(box, {
+        x: 400,
+        duration: 2,
+        ease: "none",
+        onOverwrite: () => status("onOverwrite · props claimed"),
+        onInterrupt: () => status("onInterrupt · full kill"),
+      });
+      MorePass.to(box, {
+        x: 60,
+        duration: 0.5,
+        ease: "power2.out",
+        delay: 0.35,
+      });
+      status("onOverwrite · waiting for auto claim…");
+    },
+
+    data() {
+      showPanel("panel-tween");
+      show(`const tw = MorePass.to(box, {
+  x: 280, duration: 0.7, data: { label: "hero" },
+})
+tw.data // { label: "hero" }`);
+      current = MorePass.to(box, {
+        x: 280,
+        scale: 1.08,
+        duration: 0.7,
+        ease: "power2.out",
+        data: { label: "hero", n: 9 },
+      });
+      status(`data · ${JSON.stringify(current.data)}`);
+    },
+
     matchMedia() {
       showPanel("panel-mm");
       show(`MorePass.matchMedia({

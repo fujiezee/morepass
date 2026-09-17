@@ -15,17 +15,24 @@ import {
   applyTransformProp,
   composeTransform,
   cssPropName,
+  formatComplex,
   formatValue,
   getTransformBag,
+  isClipPathProp,
   isTransformProp,
+  parseComplex,
   parseNumeric,
   parseRelative,
   readAttrNumber,
   readBlur,
+  readClipPath,
   readObjectNumber,
   readStyleNumber,
   unitFor,
   writeBlur,
+  writeClipPath,
+  zeroComplex,
+  type ComplexValue,
   type ParsedProp,
   type TransformBag,
 } from "./prop";
@@ -55,6 +62,7 @@ const SPECIAL = new Set([
   "onComplete",
   "onRepeat",
   "onInterrupt",
+  "onOverwrite",
   "stagger",
   "scrollTrigger",
   "keyframes",
@@ -66,6 +74,7 @@ const SPECIAL = new Set([
   "id",
   "snap",
   "repeatRefresh",
+  "data",
 ]);
 
 type ResolvedTarget = object | Element;
@@ -171,6 +180,7 @@ function buildProps(
     const propSnap = snapMap?.[key];
     const isAutoAlpha = key === "autoAlpha";
     const isBlur = key === "blur";
+    const isClipPath = isClipPathProp(key);
     const isCssVar = key.startsWith("--");
     const readKey = isAutoAlpha ? "opacity" : key;
     const kind =
@@ -184,6 +194,97 @@ function buildProps(
 
     if (kind === "transform") {
       transform = getTransformBag(target);
+    }
+
+    // clip-path string functions (inset / circle / same-shape multi-number)
+    if (isClipPath) {
+      const endComplex =
+        typeof endRaw === "string" ? parseComplex(endRaw) : null;
+      if (!endComplex && mode !== "from") continue;
+
+      let startComplex: ComplexValue | null = null;
+      let finalEnd: ComplexValue | null = endComplex;
+
+      if (mode === "fromTo" && fromRaw !== undefined) {
+        startComplex =
+          typeof fromRaw === "string" ? parseComplex(fromRaw) : null;
+        finalEnd = endComplex;
+      } else if (mode === "from") {
+        startComplex =
+          typeof endRaw === "string" ? parseComplex(endRaw) : null;
+        if (isElement) {
+          const current = parseComplex(readClipPath(target as Element));
+          finalEnd =
+            current &&
+            startComplex &&
+            current.nums.length === startComplex.nums.length
+              ? current
+              : startComplex
+                ? zeroComplex(startComplex)
+                : null;
+        } else {
+          const currentRaw = (target as Record<string, unknown>)[key];
+          const current =
+            typeof currentRaw === "string" ? parseComplex(currentRaw) : null;
+          finalEnd =
+            current &&
+            startComplex &&
+            current.nums.length === startComplex.nums.length
+              ? current
+              : startComplex
+                ? zeroComplex(startComplex)
+                : null;
+        }
+      } else {
+        finalEnd = endComplex;
+        if (fromRaw !== undefined && typeof fromRaw === "string") {
+          startComplex = parseComplex(fromRaw);
+        } else if (isElement) {
+          const current = parseComplex(readClipPath(target as Element));
+          startComplex =
+            current &&
+            endComplex &&
+            current.nums.length === endComplex.nums.length
+              ? current
+              : endComplex
+                ? zeroComplex(endComplex)
+                : null;
+        } else {
+          const currentRaw = (target as Record<string, unknown>)[key];
+          const current =
+            typeof currentRaw === "string" ? parseComplex(currentRaw) : null;
+          startComplex =
+            current &&
+            endComplex &&
+            current.nums.length === endComplex.nums.length
+              ? current
+              : endComplex
+                ? zeroComplex(endComplex)
+                : null;
+        }
+      }
+
+      if (
+        !startComplex ||
+        !finalEnd ||
+        startComplex.nums.length !== finalEnd.nums.length
+      ) {
+        continue;
+      }
+
+      props.push({
+        key: "clipPath",
+        kind: isElement ? "style" : "object",
+        valueType: "complex",
+        start: 0,
+        end: 1,
+        unit: "",
+        complexStart: startComplex,
+        complexEnd: finalEnd,
+        snap: propSnap,
+        active: true,
+      });
+      continue;
     }
 
     // Color props
@@ -384,6 +485,30 @@ function renderTarget(runtime: TargetRuntime, ratio: number) {
       continue;
     }
 
+    if (
+      prop.valueType === "complex" &&
+      prop.complexStart &&
+      prop.complexEnd
+    ) {
+      const start = prop.complexStart;
+      const end = prop.complexEnd;
+      const nums = start.nums.map(
+        (s, i) => s + ((end.nums[i] ?? s) - s) * ratio,
+      );
+      const formatted = formatComplex(end.template, nums, end.units);
+      if (prop.kind === "style" && isElement && isClipPathProp(prop.key)) {
+        writeClipPath(target as Element, formatted);
+      } else if (prop.kind === "style" && isElement) {
+        (target as HTMLElement).style.setProperty(
+          cssPropName(prop.key),
+          formatted,
+        );
+      } else {
+        (target as Record<string, unknown>)[prop.key] = formatted;
+      }
+      continue;
+    }
+
     let value = prop.start + (prop.end - prop.start) * ratio;
     if (prop.snap != null) value = snapValue(prop.snap, value);
     if (prop.kind === "transform" && transform) {
@@ -442,10 +567,12 @@ class Tween implements TweenHandle {
   private readonly onComplete?: () => void;
   private readonly onRepeat?: () => void;
   private readonly onInterrupt?: () => void;
+  private readonly onOverwrite?: () => void;
   private readonly repeatRefresh: boolean;
   private readonly clearProps: string | boolean | undefined;
   private readonly transformOrigin?: string;
   private readonly tweenId?: string;
+  private _data: unknown;
 
   private startWall = 0;
   private pauseWall = 0;
@@ -457,6 +584,7 @@ class Tween implements TweenHandle {
   private startedCallback = false;
   private completedCallback = false;
   private interruptFired = false;
+  private overwriteFired = false;
   private claimed = false;
   private registered = false;
   private unsub: (() => void) | null = null;
@@ -503,6 +631,7 @@ class Tween implements TweenHandle {
     this.onComplete = vars.onComplete;
     this.onRepeat = vars.onRepeat;
     this.onInterrupt = vars.onInterrupt;
+    this.onOverwrite = vars.onOverwrite;
     this.repeatRefresh = !!vars.repeatRefresh;
     this.clearProps = vars.clearProps;
     this.transformOrigin =
@@ -510,8 +639,17 @@ class Tween implements TweenHandle {
         ? vars.transformOrigin
         : undefined;
     this.tweenId = typeof vars.id === "string" ? vars.id : undefined;
+    this._data = vars.data;
     this.register();
     if (this.tweenId) registerId(this.tweenId, this);
+  }
+
+  get data() {
+    return this._data;
+  }
+
+  set data(value: unknown) {
+    this._data = value;
   }
 
   get duration() {
@@ -702,10 +840,12 @@ class Tween implements TweenHandle {
   }
 
   killAll() {
+    this.fireOverwrite();
     this.kill();
   }
 
   killProps(keys: string[]) {
+    this.fireOverwrite();
     const set = new Set(keys);
     if (set.has("scale")) {
       set.add("scaleX");
@@ -713,11 +853,27 @@ class Tween implements TweenHandle {
     }
     if (set.has("autoAlpha")) set.add("opacity");
     if (set.has("opacity")) set.add("autoAlpha");
+    if (set.has("clipPath") || set.has("clip-path")) {
+      set.add("clipPath");
+      set.add("clip-path");
+    }
     for (const runtime of this.targets) {
       for (const prop of runtime.props) {
         if (set.has(prop.key)) prop.active = false;
       }
     }
+  }
+
+  private fireOverwrite() {
+    if (
+      this.overwriteFired ||
+      this.state === "killed" ||
+      this.state === "completed"
+    ) {
+      return;
+    }
+    this.overwriteFired = true;
+    this.onOverwrite?.();
   }
 
   seek(time: number) {
@@ -928,6 +1084,10 @@ class Tween implements TweenHandle {
         }
         if (key === "blur") {
           el.style.removeProperty("filter");
+          continue;
+        }
+        if (isClipPathProp(key)) {
+          el.style.removeProperty("clip-path");
           continue;
         }
         const attrProp = runtime.props.find(

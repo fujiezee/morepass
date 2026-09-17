@@ -63,6 +63,12 @@ const elasticOut: EaseFn = (t) => {
   if (t === 0 || t === 1) return t;
   return 2 ** (-10 * t) * Math.sin((t * 10 - 0.75) * ((2 * Math.PI) / 3)) + 1;
 };
+const elasticIn: EaseFn = (t) => 1 - elasticOut(1 - clamp01(t));
+const elasticInOut: EaseFn = (t) => {
+  t = clamp01(t);
+  if (t < 0.5) return elasticIn(t * 2) / 2;
+  return (1 + elasticOut(t * 2 - 1)) / 2;
+};
 
 const bounceOut: EaseFn = (t) => {
   t = clamp01(t);
@@ -73,6 +79,50 @@ const bounceOut: EaseFn = (t) => {
   if (t < 2.5 / d1) return n1 * (t -= 2.25 / d1) * t + 0.9375;
   return n1 * (t -= 2.625 / d1) * t + 0.984375;
 };
+const bounceIn: EaseFn = (t) => 1 - bounceOut(1 - clamp01(t));
+const bounceInOut: EaseFn = (t) => {
+  t = clamp01(t);
+  if (t < 0.5) return (1 - bounceOut(1 - 2 * t)) / 2;
+  return (1 + bounceOut(2 * t - 1)) / 2;
+};
+
+type StepsJump = "jump-start" | "jump-end" | "jump-none" | "jump-both";
+
+function normalizeStepsJump(raw: string | undefined): StepsJump {
+  if (!raw) return "jump-end";
+  const v = raw.trim().toLowerCase();
+  if (v === "start" || v === "jump-start") return "jump-start";
+  if (v === "end" || v === "jump-end") return "jump-end";
+  if (v === "jump-none" || v === "none") return "jump-none";
+  if (v === "jump-both" || v === "both") return "jump-both";
+  return "jump-end";
+}
+
+/** CSS-like steps(n[, jump-*]). */
+export function makeSteps(n: number, jump?: string): EaseFn {
+  const steps = Math.max(1, Math.floor(n));
+  const type = normalizeStepsJump(jump);
+  return (t) => {
+    t = clamp01(t);
+    if (t === 0) return 0;
+    if (t === 1) return 1;
+    if (type === "jump-none") {
+      if (steps <= 1) return t;
+      return Math.floor(t * (steps - 1)) / (steps - 1);
+    }
+    if (type === "jump-both") {
+      return Math.floor(t * (steps + 1)) / (steps + 1);
+    }
+    if (type === "jump-start") {
+      return Math.min(1, Math.ceil(t * steps) / steps);
+    }
+    // jump-end (default)
+    return Math.min(1, Math.floor(t * steps) / steps);
+  };
+}
+
+const STEPS_RE =
+  /^steps\(\s*(\d+)\s*(?:,\s*(jump-(?:start|end|none|both)|start|end|none|both))?\s*\)$/i;
 
 const easings: Record<EaseName, EaseFn> = {
   none: (t) => clamp01(t),
@@ -98,14 +148,27 @@ const easings: Record<EaseName, EaseFn> = {
   "back.in": backIn,
   "back.out": backOut,
   "back.inOut": backInOut,
+  "elastic.in": elasticIn,
   "elastic.out": elasticOut,
+  "elastic.inOut": elasticInOut,
+  "bounce.in": bounceIn,
   "bounce.out": bounceOut,
+  "bounce.inOut": bounceInOut,
 };
 
-export function resolveEase(ease: EaseName | EaseFn | undefined): EaseFn {
+export function resolveEase(
+  ease: EaseName | EaseFn | string | undefined,
+): EaseFn {
   if (!ease) return easings["power1.out"];
   if (typeof ease === "function") return ease;
-  return easings[ease] ?? easings["power1.out"];
+  if (Object.prototype.hasOwnProperty.call(easings, ease)) {
+    return easings[ease as EaseName];
+  }
+  const stepsMatch = STEPS_RE.exec(ease.trim());
+  if (stepsMatch) {
+    return makeSteps(parseInt(stepsMatch[1]!, 10), stepsMatch[2]);
+  }
+  return easings["power1.out"];
 }
 
 export const ease = easings;

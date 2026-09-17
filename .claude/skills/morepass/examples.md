@@ -76,9 +76,29 @@ tw.invalidate().play()
 ## Overwrite collision
 
 ```ts
-MorePass.to(el, { x: 400, y: 20, duration: 2 })
-// 0.3s later — only x is taken over; y continues
+MorePass.to(el, {
+  x: 400, y: 20, duration: 2,
+  onOverwrite: () => console.log("props claimed"),
+  onInterrupt: () => console.log("fully killed"),
+})
+// 0.3s later — only x is taken over; y continues; onOverwrite fires once
 MorePass.to(el, { x: 100, duration: 0.8, delay: 0.3 })
+```
+
+## clipPath / steps / stagger.axis / data
+
+```ts
+MorePass.to(".mask", {
+  clipPath: "inset(10% 20% 10% 20%)",
+  duration: 1,
+  ease: "steps(6)",
+  data: { role: "hero" },
+})
+
+MorePass.to(".cell", {
+  scale: 1.1,
+  stagger: { each: 0.05, from: "start", grid: [4, 3], axis: "x" },
+})
 ```
 
 ## Nested scroller ScrollTrigger

@@ -59,6 +59,7 @@ export class Timeline implements TimelineControls {
   private scale = 1;
   private thenSettled = false;
   private thenResolvers: Array<() => void> = [];
+  private _data: unknown;
 
   constructor(vars: TimelineVars = {}) {
     this.defaults = vars.defaults ?? {};
@@ -66,12 +67,21 @@ export class Timeline implements TimelineControls {
     this.onUpdate = vars.onUpdate;
     this.onComplete = vars.onComplete;
     this.scale = vars.timeScale ?? 1;
+    this._data = vars.data;
     if (!vars.paused) {
       this.state = "idle";
     } else {
       this.state = "paused";
     }
     collectIntoContext(this);
+  }
+
+  get data() {
+    return this._data;
+  }
+
+  set data(value: unknown) {
+    this._data = value;
   }
 
   get duration() {
@@ -254,6 +264,12 @@ export class Timeline implements TimelineControls {
         invalidate: () => {
           nested.invalidate();
           return proxy;
+        },
+        get data() {
+          return nested.data;
+        },
+        set data(value: unknown) {
+          nested.data = value;
         },
         then: (onfulfilled, onrejected) => nested.then(onfulfilled, onrejected),
         renderAt: (t: number) => {

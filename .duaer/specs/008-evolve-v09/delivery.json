@@ -1,0 +1,15 @@
+{
+  "status": "accepted",
+  "featureDir": ".duaer/specs/008-evolve-v09",
+  "slug": "008-evolve-v09",
+  "acceptedAt": "2026-09-18T06:55:00.000Z",
+  "verification": {
+    "levels": ["L0", "L1"],
+    "commands": ["npm test", "npm run build"],
+    "results": {
+      "npm test": "87 passed (14 files)",
+      "npm run build": "ok"
+    }
+  },
+  "summary": "MorePass v0.9: clipPath, stagger.axis, elastic/bounce in variants + steps(), onOverwrite, data"
+}

@@ -26,8 +26,12 @@ export type EaseName =
   | "back.in"
   | "back.out"
   | "back.inOut"
+  | "elastic.in"
   | "elastic.out"
-  | "bounce.out";
+  | "elastic.inOut"
+  | "bounce.in"
+  | "bounce.out"
+  | "bounce.inOut";
 
 export type Target = object | Element | string;
 
@@ -48,12 +52,15 @@ export type StaggerVars = {
   from?: StaggerFrom;
   /** 2D layout: `[cols, rows]` or `[cols]` (rows inferred from total). */
   grid?: [number, number] | [number];
+  /** With `grid`, rank by column (`x`) or row (`y`) only. */
+  axis?: "x" | "y";
 };
 
 export type Vars = Record<string, unknown> & {
   duration?: number;
   delay?: number;
-  ease?: EaseName | EaseFn;
+  /** Named ease, custom fn, or `steps(n)` / `steps(n, jump-end)`. */
+  ease?: EaseName | EaseFn | string;
   repeat?: number;
   /** Gap between repeats (seconds). */
   repeatDelay?: number;
@@ -81,12 +88,16 @@ export type Vars = Record<string, unknown> & {
   snap?: Record<string, number | number[]>;
   /** Rebuild start/end from current state before each repeat cycle. */
   repeatRefresh?: boolean;
+  /** Arbitrary payload; also readable/writable via `tw.data`. */
+  data?: unknown;
   onStart?: () => void;
   onUpdate?: () => void;
   onComplete?: () => void;
   onRepeat?: () => void;
   /** Fired once when killed via overwrite or explicit kill (not on complete). */
   onInterrupt?: () => void;
+  /** Fired once when this tween loses props via overwrite (killProps / killAll). */
+  onOverwrite?: () => void;
 };
 
 export type Position = number | string;
@@ -95,6 +106,7 @@ export type TimelineVars = {
   defaults?: Partial<Vars>;
   paused?: boolean;
   timeScale?: number;
+  data?: unknown;
   onStart?: () => void;
   onUpdate?: () => void;
   onComplete?: () => void;
@@ -118,6 +130,8 @@ export interface TweenControls extends PromiseLike<void> {
   isActive(): boolean;
   /** Rebuild start/end from current state using stored raw vars. */
   invalidate(): this;
+  /** Arbitrary payload from `vars.data` (get/set). */
+  data: unknown;
   readonly duration: number;
   /** Full run length including repeats and repeatDelay. */
   readonly totalDuration: number;

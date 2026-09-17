@@ -1,4 +1,8 @@
 {
-  "feature": "007-evolve-v08",
-  "path": ".duaer/specs/007-evolve-v08"
+  "featureDir": ".duaer/specs/008-evolve-v09",
+  "slug": "008-evolve-v09",
+  "title": "Capability evolution v0.9",
+  "branch": "feat/evolve-v09",
+  "worktree": ".worktree/feat-evolve-v09",
+  "updatedAt": "2026-09-18T00:00:00.000Z"
 }

@@ -1,5 +1,12 @@
 export type PropKind = "transform" | "style" | "object" | "attr";
-export type ValueType = "number" | "color";
+export type ValueType = "number" | "color" | "complex";
+
+export interface ComplexValue {
+  /** Non-numeric skeleton with `#` placeholders for each number. */
+  template: string;
+  nums: number[];
+  units: string[];
+}
 
 export interface ParsedProp {
   key: string;
@@ -10,6 +17,9 @@ export interface ParsedProp {
   unit: string;
   startColor?: import("./color").RGBA;
   endColor?: import("./color").RGBA;
+  /** Multi-number CSS functions (clip-path inset/circle, …). */
+  complexStart?: ComplexValue;
+  complexEnd?: ComplexValue;
   /** Snap increment or candidate list (applied after interpolate). */
   snap?: number | number[];
   active: boolean;
@@ -269,4 +279,64 @@ export function writeBlur(el: Element, px: number): void {
     return;
   }
   style.filter = `${current} ${blurPart}`.trim();
+}
+
+const COMPLEX_NUM_RE = /([+-]?\d*\.?\d+)([a-z%]*)/gi;
+
+/** Split a CSS function string into template + numeric slots. */
+export function parseComplex(value: string): ComplexValue | null {
+  const trimmed = value.trim();
+  if (!trimmed || trimmed === "none") return null;
+  const nums: number[] = [];
+  const units: string[] = [];
+  const template = trimmed.replace(COMPLEX_NUM_RE, (_, n: string, u: string) => {
+    nums.push(parseFloat(n));
+    units.push(u || "");
+    return "#";
+  });
+  if (nums.length === 0) return null;
+  return { template, nums, units };
+}
+
+export function formatComplex(
+  template: string,
+  nums: number[],
+  units: string[],
+): string {
+  let i = 0;
+  return template.replace(/#/g, () => {
+    const n = nums[i] ?? 0;
+    const u = units[i] ?? "";
+    i += 1;
+    return `${n}${u}`;
+  });
+}
+
+/** Zero all numbers in a complex value (same template/units). */
+export function zeroComplex(src: ComplexValue): ComplexValue {
+  return {
+    template: src.template,
+    nums: src.nums.map(() => 0),
+    units: [...src.units],
+  };
+}
+
+/** Read clip-path from an element (inline preferred, then computed). */
+export function readClipPath(el: Element): string {
+  if (!(el instanceof HTMLElement) && !(el instanceof SVGElement)) return "";
+  const inline = (el as HTMLElement).style.clipPath || "";
+  if (inline && inline !== "none") return inline;
+  if (typeof getComputedStyle === "undefined") return "";
+  const computed = getComputedStyle(el).clipPath || "";
+  if (!computed || computed === "none") return "";
+  return computed;
+}
+
+export function writeClipPath(el: Element, value: string): void {
+  if (!(el instanceof HTMLElement) && !(el instanceof SVGElement)) return;
+  (el as HTMLElement).style.clipPath = value;
+}
+
+export function isClipPathProp(key: string): boolean {
+  return key === "clipPath" || key === "clip-path";
 }

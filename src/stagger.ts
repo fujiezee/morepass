@@ -11,6 +11,7 @@ export function normalizeStagger(
     amount: stagger.amount,
     from: stagger.from ?? "start",
     grid: stagger.grid,
+    axis: stagger.axis,
   };
 }
 
@@ -42,12 +43,44 @@ function dist2(
   return Math.sqrt(dc * dc + dr * dr);
 }
 
+function axisRank(
+  col: number,
+  row: number,
+  cols: number,
+  rows: number,
+  from: StaggerFrom,
+  axis: "x" | "y",
+  total: number,
+): number {
+  const coord = axis === "x" ? col : row;
+  const span = axis === "x" ? cols : rows;
+
+  if (from === "end") return span - 1 - coord;
+  if (from === "center") return Math.abs(coord - (span - 1) / 2);
+  if (from === "edges") {
+    const center = (span - 1) / 2;
+    return center - Math.abs(coord - center);
+  }
+  if (from === "random") return coord; // unused — see buildStaggerDelays
+  if (typeof from === "number") {
+    const origin = gridCoords(
+      Math.max(0, Math.min(total - 1, Math.floor(from))),
+      cols,
+    );
+    const originCoord = axis === "x" ? origin.col : origin.row;
+    return Math.abs(coord - originCoord);
+  }
+  // start
+  return coord;
+}
+
 /** Distance-from-origin index used to compute stagger delay. */
 export function staggerRank(
   index: number,
   total: number,
   from: StaggerFrom = "start",
   grid?: [number, number] | [number],
+  axis?: "x" | "y",
 ): number {
   if (total <= 1) return 0;
 
@@ -55,6 +88,10 @@ export function staggerRank(
   if (layout) {
     const { cols, rows } = layout;
     const { col, row } = gridCoords(index, cols);
+
+    if (axis === "x" || axis === "y") {
+      return axisRank(col, row, cols, rows, from, axis, total);
+    }
 
     if (from === "end") {
       return dist2(col, row, cols - 1, rows - 1);
@@ -121,7 +158,7 @@ export function buildStaggerDelays(
     });
   } else {
     ranks = Array.from({ length: total }, (_, i) =>
-      staggerRank(i, total, cfg.from, cfg.grid),
+      staggerRank(i, total, cfg.from, cfg.grid, cfg.axis),
     );
   }
 

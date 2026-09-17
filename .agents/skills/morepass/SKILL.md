@@ -3,10 +3,10 @@ name: morepass
 description: >-
   Animate DOM or plain objects with MorePass: to/from/fromTo, timeline, stagger,
   keyframes, quickTo, context, delayedCall, killTweensOf, getById, getProperty,
-  autoAlpha, blur, timeScale, clearProps, attr, CSS variables, relative values,
-  function end values, snap, then/invalidate, repeatRefresh, onInterrupt,
-  totalProgress, skewX/skewY, xPercent/yPercent, transformOrigin, scrollTrigger,
-  matchMedia, utils, stagger.grid.
+  autoAlpha, blur, clipPath, timeScale, clearProps, attr, CSS variables, relative values,
+  function end values, snap, then/invalidate, repeatRefresh, onInterrupt, onOverwrite,
+  data, totalProgress, skewX/skewY, xPercent/yPercent, transformOrigin, scrollTrigger,
+  matchMedia, utils, stagger.grid, stagger.axis, steps() ease.
   Use when writing or refactoring motion code, or when the user mentions MorePass,
   tween, scrub, pin, or scroll-linked animation.
 ---
@@ -45,9 +45,12 @@ Targets: CSS selector string, `Element`, plain object, or arrays of those.
 | Await complete / kill | `await tw` / `tw.then(...)` |
 | Rebuild start/end | `tw.invalidate()` |
 | Refresh each repeat | `repeatRefresh: true` |
-| Kill / overwrite callback | `onInterrupt` (once; not on complete) |
+| Kill / overwrite callback | `onInterrupt` (full kill; once; not on complete) |
+| Props claimed by overwrite | `onOverwrite` (once per overwrite event) |
+| Arbitrary payload | `data: …` / `tw.data` |
 | Full-run progress | `tw.totalProgress()` / `tw.totalDuration` |
 | Blur filter | `blur: 12` → `filter: blur(12px)` |
+| Clip-path | `clipPath: "inset(…)"` / `"circle(…)"` |
 | Skew | `skewX` / `skewY` |
 | Percent translate | `xPercent` / `yPercent` |
 | Pivot | `transformOrigin: "50% 50%"` |
@@ -72,10 +75,10 @@ Targets: CSS selector string, `Element`, plain object, or arrays of those.
 ```ts
 {
   // animatable: x, y, scale, scaleX, scaleY, rotation, skewX, skewY, opacity,
-  // autoAlpha, blur, width, height, backgroundColor, color, borderRadius, …
+  // autoAlpha, blur, clipPath, width, height, backgroundColor, color, borderRadius, …
   duration: 0.5,          // seconds (default 0.5)
   delay: 0,
-  ease: "power2.out",     // see Eases below
+  ease: "power2.out",     // see Eases below; also "steps(6)" / "steps(6, jump-end)"
   repeat: 0,              // -1 = infinite
   repeatDelay: 0,
   repeatRefresh: false,   // rebuild start/end before each repeat cycle
@@ -83,23 +86,25 @@ Targets: CSS selector string, `Element`, plain object, or arrays of those.
   paused: false,          // drive with progress/seek
   timeScale: 1,
   overwrite: "auto",      // "auto" | true | false
-  stagger: { each: 0.08, from: "center", grid: [3, 2] }, // start|end|center|edges|random|index
+  stagger: { each: 0.08, from: "center", grid: [3, 2], axis: "x" }, // axis with grid
   keyframes: [/* … */],
   scrollTrigger: { /* … */ },
   attr: { /* svg attrs */ },
   transformOrigin: "50% 0%",
   id: "hero",
+  data: { label: "hero" }, // also tw.data get/set
   snap: { x: 10 },        // or { x: [0, 50, 100] }
   clearProps: "opacity,x", // or "all" / true
   onStart() {},
   onUpdate() {},
   onComplete() {},
   onRepeat() {},
-  onInterrupt() {},       // kill / overwrite only (once)
+  onInterrupt() {},       // full kill / overwrite:true (once)
+  onOverwrite() {},       // props claimed via overwrite (once)
 }
 ```
 
-Controls (every tween/timeline): `play pause reverse restart kill seek progress totalProgress timeScale isActive invalidate` + `then` (PromiseLike) + `duration` / `totalDuration` / `time`.
+Controls (every tween/timeline): `play pause reverse restart kill seek progress totalProgress timeScale isActive invalidate` + `data` + `then` (PromiseLike) + `duration` / `totalDuration` / `time`.
 
 ## Recipes
 
@@ -125,9 +130,10 @@ MorePass.to(".box", {
   snap: { x: 20 },
   duration: 0.8,
 })
-const tw = MorePass.to(".box", { skewX: 12, blur: 8, duration: 0.5 })
+const tw = MorePass.to(".box", { skewX: 12, blur: 8, clipPath: "circle(40% at 50% 50%)", duration: 0.5, data: { id: 1 } })
 await tw
 tw.invalidate() // rebuild start/end from current state
+tw.data // { id: 1 }
 
 // repeats that re-sample function ends
 MorePass.to(".box", {
@@ -136,6 +142,7 @@ MorePass.to(".box", {
   repeat: 3,
   repeatRefresh: true,
   onInterrupt: () => {},
+  onOverwrite: () => {},
 })
 tw.totalProgress(0.5) // across totalDuration (incl. repeats)
 ```
@@ -167,6 +174,12 @@ MorePass.to(".dot", {
 MorePass.to(".cell", {
   scale: 1.1, duration: 0.35,
   stagger: { each: 0.05, from: "center", grid: [4, 3] }, // or grid: [4]
+})
+
+// axis: only along columns (x) or rows (y)
+MorePass.to(".cell", {
+  opacity: 1, duration: 0.3,
+  stagger: { each: 0.06, from: "start", grid: [4, 3], axis: "x" },
 })
 ```
 
@@ -307,7 +320,7 @@ MorePass.utils.pipe(fn1, fn2)
 
 ## Eases
 
-`none` `linear` · `power1|2|3.in|out|inOut` · `sine.*` · `expo.*` · `circ.*` · `back.*` · `elastic.out` · `bounce.out` · or a custom `(t)=>number`.
+`none` `linear` · `power1|2|3.in|out|inOut` · `sine.*` · `expo.*` · `circ.*` · `back.*` · `elastic.in|out|inOut` · `bounce.in|out|inOut` · `steps(n)` / `steps(n, jump-end|jump-start|jump-none|jump-both)` · or a custom `(t)=>number`.
 
 Default ease: `power1.out`.
 
@@ -321,8 +334,9 @@ Default ease: `power1.out`.
 
 ## Overwrite
 
-- Default `"auto"`: only kills conflicting props on the same target.
-- `overwrite: true`: kills the whole prior tween on that target.
+- Default `"auto"`: only kills conflicting props on the same target (`onOverwrite` on the prior tween).
+- `overwrite: true`: kills the whole prior tween (`onOverwrite` + `onInterrupt`).
+- Explicit `kill()` fires `onInterrupt` only (not `onOverwrite`).
 - Always `kill()` when tearing down components / routes.
 
 ## Do / Don't
