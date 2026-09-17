@@ -2,7 +2,7 @@
 
 A small, modern tween library — GSAP-inspired API, built so **AI agents can learn it fast**.
 
-**v0.3.0** · TypeScript · timeline · keyframes · quickTo · stagger · ScrollTrigger · matchMedia · utils
+**v0.4.0** · TypeScript · timeline · keyframes · quickTo · context · killTweensOf · getProperty · autoAlpha · timeScale · stagger · ScrollTrigger · matchMedia · utils
 
 ```bash
 npm install morepass
@@ -45,6 +45,12 @@ MorePass.timeline()
 | `timeline()` | Sequencing, labels, `+=` / `-=` / `<` / `>` |
 | `keyframes` | Array or `"0%"` / `"50%"` / `"100%"` maps |
 | `quickTo` | Fast property retarget (pointer follow) |
+| `context` | Auto-collect tweens; `revert()` on unmount |
+| `killTweensOf` / `isTweening` | Kill or query by target |
+| `getProperty` | Read current transform / style / object value |
+| `autoAlpha` | Opacity + visibility |
+| `timeScale` / `repeatDelay` / `onRepeat` | Playback control |
+| `defaults` | Global tween defaults |
 | `paused` + `progress` / `seek` | Scrub UIs without nested scroll |
 | `stagger` | `0.1` or `{ each, amount, from }` + function values |
 | `scrollTrigger` | scrub, once, pin, toggleActions, custom scroller |

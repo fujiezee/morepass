@@ -46,6 +46,8 @@ export type Vars = Record<string, unknown> & {
   delay?: number;
   ease?: EaseName | EaseFn;
   repeat?: number;
+  /** Gap between repeats (seconds). */
+  repeatDelay?: number;
   yoyo?: boolean;
   immediateRender?: boolean;
   /** Default `"auto"` — only conflicting props. `true` kills whole prior tweens. */
@@ -56,6 +58,8 @@ export type Vars = Record<string, unknown> & {
   keyframes?: Vars[] | Record<string, Vars>;
   /** Start paused (drive with seek/progress or play later). */
   paused?: boolean;
+  /** Playback rate (also settable via `timeScale()`). */
+  timeScale?: number;
   onStart?: () => void;
   onUpdate?: () => void;
   onComplete?: () => void;
@@ -67,6 +71,7 @@ export type Position = number | string;
 export type TimelineVars = {
   defaults?: Partial<Vars>;
   paused?: boolean;
+  timeScale?: number;
   onStart?: () => void;
   onUpdate?: () => void;
   onComplete?: () => void;
@@ -82,6 +87,8 @@ export interface TweenControls {
   kill(): this;
   seek(time: number): this;
   progress(value?: number): number | this;
+  /** Get/set playback rate (1 = normal). */
+  timeScale(value?: number): number | this;
   isActive(): boolean;
   readonly duration: number;
   readonly time: number;

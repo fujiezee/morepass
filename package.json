@@ -1,6 +1,6 @@
 {
   "name": "morepass",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "MorePass — a small, modern tween library",
   "type": "module",
   "main": "./dist/morepass.cjs",

@@ -1,3 +1,4 @@
+import { collectIntoContext } from "./context";
 import { mapFunctionValues, resolveStaggerDelay } from "./stagger";
 import { ticker } from "./ticker";
 import {
@@ -55,23 +56,20 @@ export class Timeline implements TimelineControls {
   private lastChildEnd = 0;
   private ratio = 0;
   private total = 0;
+  private scale = 1;
 
   constructor(vars: TimelineVars = {}) {
     this.defaults = vars.defaults ?? {};
     this.onStart = vars.onStart;
     this.onUpdate = vars.onUpdate;
     this.onComplete = vars.onComplete;
+    this.scale = vars.timeScale ?? 1;
     if (!vars.paused) {
-      // stay idle until first play or until children added then auto? GSAP autoplays.
-      // We'll autoplay on first child add if not paused — match GSAP: timelines play by default.
       this.state = "idle";
     } else {
       this.state = "paused";
     }
-    if (!vars.paused) {
-      // defer play until something exists; play() is called after adds typically.
-      // Auto-start when play() is invoked. For convenience, call play() at end of microtask if children exist — skip; user/demo will call play.
-    }
+    collectIntoContext(this);
   }
 
   get duration() {
@@ -236,6 +234,11 @@ export class Timeline implements TimelineControls {
           nested.progress(v);
           return proxy;
         },
+        timeScale: (v?: number) => {
+          if (v === undefined) return nested.timeScale() as number;
+          nested.timeScale(v);
+          return proxy;
+        },
         isActive: () => nested.isActive(),
         renderAt: (t: number) => {
           nested.seek(Math.max(0, t));
@@ -364,6 +367,15 @@ export class Timeline implements TimelineControls {
     return this;
   }
 
+  timeScale(value?: number) {
+    if (value === undefined) return this.scale;
+    const now = performance.now() / 1000;
+    const local = (now - this.startWall) * this.scale;
+    this.scale = value === 0 ? 0.0001 : value;
+    this.startWall = now - local / this.scale;
+    return this;
+  }
+
   isActive() {
     return this.state === "active";
   }
@@ -451,7 +463,7 @@ export class Timeline implements TimelineControls {
 
   private tick(wall: number) {
     if (this.state !== "active") return;
-    const raw = wall - this.startWall;
+    const raw = (wall - this.startWall) * this.scale;
     const local = this.playingForward ? raw : this.total - raw;
     this.renderAt(local);
 

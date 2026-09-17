@@ -6,6 +6,8 @@ import {
   readStyleColor,
   type RGBA,
 } from "./color";
+import { collectIntoContext } from "./context";
+import { mergeDefaults } from "./defaults";
 import { resolveEase } from "./ease";
 import { claimProps, releaseProps, type PropOwner } from "./overwrite";
 import {
@@ -22,6 +24,7 @@ import {
   type ParsedProp,
   type TransformBag,
 } from "./prop";
+import { registerTween, unregisterTween } from "./registry";
 import { ticker } from "./ticker";
 import type {
   EaseFn,
@@ -36,6 +39,7 @@ const SPECIAL = new Set([
   "delay",
   "ease",
   "repeat",
+  "repeatDelay",
   "yoyo",
   "immediateRender",
   "overwrite",
@@ -47,6 +51,7 @@ const SPECIAL = new Set([
   "scrollTrigger",
   "keyframes",
   "paused",
+  "timeScale",
 ]);
 
 type ResolvedTarget = object | Element;
@@ -102,6 +107,8 @@ function buildProps(
 
   for (const [key, endRaw] of entries) {
     const fromRaw = fromVars ? fromVars[key] : undefined;
+    const isAutoAlpha = key === "autoAlpha";
+    const readKey = isAutoAlpha ? "opacity" : key;
     const kind =
       isElement && isTransformProp(key)
         ? "transform"
@@ -116,6 +123,7 @@ function buildProps(
     // Color props
     const colorCandidate =
       kind !== "transform" &&
+      !isAutoAlpha &&
       (looksLikeColor(endRaw, key) ||
         (fromRaw !== undefined && looksLikeColor(fromRaw, key)));
 
@@ -168,38 +176,38 @@ function buildProps(
     if (mode === "fromTo" && fromRaw !== undefined) {
       const endParsed = parseNumeric(
         endRaw,
-        unitFor(key, ""),
+        unitFor(readKey, ""),
       ) ?? { num: 0, unit: "" };
       const startParsed = parseNumeric(
         fromRaw,
-        unitFor(key, endParsed.unit),
+        unitFor(readKey, endParsed.unit),
       ) ?? { num: 0, unit: endParsed.unit };
       startNum = startParsed.num;
       endNum = endParsed.num;
-      unit = unitFor(key, endParsed.unit || startParsed.unit);
+      unit = unitFor(readKey, endParsed.unit || startParsed.unit);
     } else if (mode === "from") {
       const startParsed = parseNumeric(
         endRaw,
-        unitFor(key, ""),
+        unitFor(readKey, ""),
       ) ?? { num: 0, unit: "" };
-      unit = unitFor(key, startParsed.unit);
+      unit = unitFor(readKey, startParsed.unit);
       startNum = startParsed.num;
       if (isElement && kind !== "object") {
         if (kind === "transform") {
           endNum =
             key === "scale" || key === "scaleX" || key === "scaleY" ? 1 : 0;
         } else {
-          endNum = readStyleNumber(target as Element, key).num;
+          endNum = readStyleNumber(target as Element, readKey).num;
         }
       } else {
-        endNum = readObjectNumber(target as object, key);
+        endNum = readObjectNumber(target as object, readKey);
       }
     } else {
       const endParsed = parseNumeric(
         endRaw,
-        unitFor(key, ""),
+        unitFor(readKey, ""),
       ) ?? { num: Number(endRaw) || 0, unit: "" };
-      unit = unitFor(key, endParsed.unit);
+      unit = unitFor(readKey, endParsed.unit);
       endNum = endParsed.num;
 
       if (fromRaw !== undefined) {
@@ -207,7 +215,7 @@ function buildProps(
           parseNumeric(fromRaw, unit)?.num ??
           (typeof fromRaw === "number" ? fromRaw : 0);
       } else if (isElement && kind === "style") {
-        const current = readStyleNumber(target as Element, key);
+        const current = readStyleNumber(target as Element, readKey);
         startNum = current.num;
         if (!unit) unit = current.unit;
       } else if (kind === "transform") {
@@ -216,7 +224,7 @@ function buildProps(
         if (key === "scale") startNum = bag.scaleX;
         else startNum = (bag as unknown as Record<string, number>)[key] ?? 0;
       } else {
-        startNum = readObjectNumber(target as object, key);
+        startNum = readObjectNumber(target as object, readKey);
       }
     }
 
@@ -262,10 +270,21 @@ function renderTarget(runtime: TargetRuntime, ratio: number) {
       continue;
     }
     if (prop.kind === "style" && isElement) {
+      if (prop.key === "autoAlpha") {
+        const el = target as HTMLElement;
+        el.style.opacity = String(value);
+        el.style.visibility = value <= 0.001 ? "hidden" : "inherit";
+        continue;
+      }
       (target as HTMLElement).style.setProperty(
         cssPropName(prop.key),
         formatValue(value, prop.unit),
       );
+      continue;
+    }
+    if (prop.key === "autoAlpha") {
+      (target as Record<string, unknown>).opacity = value;
+      (target as Record<string, unknown>).autoAlpha = value;
       continue;
     }
     (target as Record<string, unknown>)[prop.key] = value;
@@ -284,18 +303,23 @@ class Tween implements TweenHandle {
   private readonly durationSec: number;
   private readonly yoyo: boolean;
   private readonly overwrite: boolean | "auto";
+  private readonly repeatDelaySec: number;
   private readonly onStart?: () => void;
   private readonly onUpdate?: () => void;
   private readonly onComplete?: () => void;
+  private readonly onRepeat?: () => void;
 
   private startWall = 0;
   private pauseWall = 0;
   private elapsed = 0;
   private iteration = 0;
+  private lastRepeatFired = -1;
   private playingForward = true;
+  private scale = 1;
   private startedCallback = false;
   private completedCallback = false;
   private claimed = false;
+  private registered = false;
   private unsub: (() => void) | null = null;
   private ratio = 0;
   private readonly totalIterations: number;
@@ -309,9 +333,13 @@ class Tween implements TweenHandle {
     this.totalIterations = repeat < 0 ? Number.POSITIVE_INFINITY : repeat;
     this.yoyo = !!vars.yoyo;
     this.overwrite = vars.overwrite ?? "auto";
+    this.repeatDelaySec = Math.max(0, vars.repeatDelay ?? 0);
+    this.scale = vars.timeScale ?? 1;
     this.onStart = vars.onStart;
     this.onUpdate = vars.onUpdate;
     this.onComplete = vars.onComplete;
+    this.onRepeat = vars.onRepeat;
+    this.register();
   }
 
   get duration() {
@@ -320,7 +348,10 @@ class Tween implements TweenHandle {
 
   get totalDuration() {
     if (!Number.isFinite(this.totalIterations)) return Number.POSITIVE_INFINITY;
-    return this.durationSec * (this.totalIterations + 1);
+    const reps = this.totalIterations;
+    return (
+      this.durationSec * (reps + 1) + this.repeatDelaySec * reps
+    );
   }
 
   get time() {
@@ -335,6 +366,28 @@ class Tween implements TweenHandle {
     const d = this.delay;
     this.delay = 0;
     return d;
+  }
+
+  private cycleLength() {
+    return this.durationSec + this.repeatDelaySec;
+  }
+
+  private register() {
+    if (this.registered) return;
+    this.registered = true;
+    registerTween(
+      this.targets.map((t) => t.target),
+      this,
+    );
+  }
+
+  private unregister() {
+    if (!this.registered) return;
+    this.registered = false;
+    unregisterTween(
+      this.targets.map((t) => t.target),
+      this,
+    );
   }
 
   play() {
@@ -387,6 +440,7 @@ class Tween implements TweenHandle {
     this.state = "idle";
     this.elapsed = 0;
     this.iteration = 0;
+    this.lastRepeatFired = -1;
     this.playingForward = true;
     this.startedCallback = false;
     this.completedCallback = false;
@@ -400,6 +454,7 @@ class Tween implements TweenHandle {
 
   kill() {
     this.releaseClaims();
+    this.unregister();
     this.state = "killed";
     this.clearTicker();
     this.targets.length = 0;
@@ -416,6 +471,8 @@ class Tween implements TweenHandle {
       set.add("scaleX");
       set.add("scaleY");
     }
+    if (set.has("autoAlpha")) set.add("opacity");
+    if (set.has("opacity")) set.add("autoAlpha");
     for (const runtime of this.targets) {
       for (const prop of runtime.props) {
         if (set.has(prop.key)) prop.active = false;
@@ -431,6 +488,15 @@ class Tween implements TweenHandle {
   progress(value?: number) {
     if (value === undefined) return this.ratio;
     this.renderAt(value * this.durationSec);
+    return this;
+  }
+
+  timeScale(value?: number) {
+    if (value === undefined) return this.scale;
+    const now = performance.now() / 1000;
+    const local = (now - this.startWall - this.delay) * this.scale;
+    this.scale = value === 0 ? 0.0001 : value;
+    this.startWall = now - this.delay - local / this.scale;
     return this;
   }
 
@@ -462,7 +528,7 @@ class Tween implements TweenHandle {
       return;
     }
 
-    if (localTime >= total) {
+    if (Number.isFinite(total) && localTime >= total) {
       const endP = this.yoyo && this.totalIterations % 2 === 1 ? 0 : 1;
       this.elapsed = this.durationSec;
       this.apply(this.playingForward ? endP : 1 - endP);
@@ -473,12 +539,35 @@ class Tween implements TweenHandle {
     this.completedCallback = false;
     if (this.state !== "paused") this.state = "active";
 
-    const cycle = Math.floor(localTime / this.durationSec);
-    const into = localTime % this.durationSec;
+    const cycleLen = this.cycleLength();
+    let cycle: number;
+    let into: number;
+
+    if (this.repeatDelaySec > 0 && Number.isFinite(this.totalIterations)) {
+      cycle = Math.min(
+        Math.floor(localTime / cycleLen),
+        this.totalIterations,
+      );
+      const cycleStart = cycle * cycleLen;
+      into = localTime - cycleStart;
+      if (into > this.durationSec) into = this.durationSec;
+    } else if (this.repeatDelaySec > 0) {
+      cycle = Math.floor(localTime / cycleLen);
+      into = Math.min(localTime - cycle * cycleLen, this.durationSec);
+    } else {
+      cycle = Math.floor(localTime / this.durationSec);
+      into = localTime % this.durationSec;
+    }
+
+    if (cycle > 0 && cycle !== this.lastRepeatFired && cycle > this.iteration) {
+      this.onRepeat?.();
+      this.lastRepeatFired = cycle;
+    }
     this.iteration = cycle;
     this.elapsed = into;
 
-    let p = into / this.durationSec;
+    let p =
+      this.durationSec === 0 ? 1 : into / this.durationSec;
     if (!this.playingForward) p = 1 - p;
     if (this.yoyo && cycle % 2 === 1) p = 1 - p;
     this.apply(p);
@@ -515,7 +604,7 @@ class Tween implements TweenHandle {
 
   private tick(wall: number) {
     if (this.state !== "active") return;
-    const local = wall - this.startWall - this.delay;
+    const local = (wall - this.startWall - this.delay) * this.scale;
     this.renderAt(local);
     if (local >= this.totalDuration) {
       this.clearTicker();
@@ -549,9 +638,16 @@ export function createTweenHandle(
   mode: TweenMode,
   options: { autoPlay?: boolean } = {},
 ): TweenHandle {
+  const mergedTo = mergeDefaults(toVars);
+  const mergedFrom = fromVars ? mergeDefaults(fromVars) : null;
   const resolved = resolveTargets(target);
   const runtimes: TargetRuntime[] = resolved.map((item) => {
-    const { props, transform } = buildProps(item, fromVars, toVars, mode);
+    const { props, transform } = buildProps(
+      item,
+      mergedFrom,
+      mergedTo,
+      mode,
+    );
     return {
       target: item,
       isElement: typeof Element !== "undefined" && item instanceof Element,
@@ -560,8 +656,9 @@ export function createTweenHandle(
     };
   });
 
-  const vars = mode === "from" ? (fromVars ?? toVars) : toVars;
+  const vars = mode === "from" ? (mergedFrom ?? mergedTo) : mergedTo;
   const tween = new Tween(runtimes, vars);
+  collectIntoContext(tween);
 
   const immediate =
     vars.immediateRender ?? (mode === "from" || mode === "fromTo");

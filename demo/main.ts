@@ -1,4 +1,5 @@
 import MorePass, {
+  context,
   matchMedia,
   quickTo,
   type TweenControls,
@@ -40,6 +41,7 @@ let scrubTween: TweenControls | null = null;
 let kfTween: TweenControls | null = null;
 let setQuickX: ((v: number) => TweenControls) | null = null;
 let setQuickY: ((v: number) => TweenControls) | null = null;
+let demoCtx: ReturnType<typeof context> | null = null;
 
 function status(text: string) {
   statusEl.textContent = text;
@@ -81,6 +83,8 @@ function killAll() {
   mm = null;
   setQuickX = null;
   setQuickY = null;
+  demoCtx?.kill();
+  demoCtx = null;
   oncePlay.onclick = null;
   scrubRange.oninput = null;
   kfRange.oninput = null;
@@ -441,6 +445,45 @@ pad.onpointermove = (e) => {
         else onQuickMove(e);
       };
       status("quickTo · move over the pad");
+    },
+
+    context() {
+      showPanel("panel-tween");
+      show(`const ctx = MorePass.context(() => {
+  MorePass.to(box, { x: 300, duration: 0.7 })
+  MorePass.to(box2, { x: 180, opacity: 1, scale: 1, duration: 0.5 },)
+})
+// later: ctx.revert()`);
+      demoCtx = context(() => {
+        current = MorePass.to(box, {
+          x: 300,
+          rotation: 90,
+          duration: 0.7,
+          ease: "power2.out",
+        });
+        MorePass.to(box2, {
+          x: 180,
+          opacity: 1,
+          scale: 1,
+          duration: 0.55,
+          ease: "power2.out",
+        });
+      });
+      status(`context · ${demoCtx.animations.length} collected · reset reverts`);
+    },
+
+    autoAlpha() {
+      showPanel("panel-tween");
+      show(`MorePass.to(box, { autoAlpha: 0, x: 280, duration: 0.8 })
+// opacity → 0 and visibility:hidden`);
+      MorePass.set(box, { autoAlpha: 1, x: 0 });
+      current = MorePass.to(box, {
+        autoAlpha: 0,
+        x: 280,
+        duration: 0.85,
+        ease: "power2.inOut",
+      });
+      status("autoAlpha · fades then hides");
     },
 
     matchMedia() {

@@ -1,5 +1,9 @@
 import { set, to, from, fromTo } from "./animate";
+import { context } from "./context";
+import { defaults } from "./defaults";
 import { ease } from "./ease";
+import { getProperty } from "./get-property";
+import { isTweening, killTweensOf } from "./kill";
 import { matchMedia } from "./match-media";
 import { quickTo } from "./quick-to";
 import { scrollTrigger } from "./scroll-trigger";
@@ -22,6 +26,7 @@ import type {
   ScrollTriggerVars,
 } from "./scroll-types";
 import type { QuickToVars } from "./quick-to";
+import type { Context } from "./context";
 
 export type {
   EaseFn,
@@ -37,6 +42,7 @@ export type {
   ScrollTriggerInstance,
   ScrollTriggerVars,
   QuickToVars,
+  Context,
 };
 
 export const MorePass = {
@@ -48,6 +54,11 @@ export const MorePass = {
   scrollTrigger,
   matchMedia,
   quickTo,
+  context,
+  defaults,
+  getProperty,
+  killTweensOf,
+  isTweening,
   utils,
   ease,
 };
@@ -61,6 +72,11 @@ export {
   scrollTrigger,
   matchMedia,
   quickTo,
+  context,
+  defaults,
+  getProperty,
+  killTweensOf,
+  isTweening,
   utils,
   ease,
 };

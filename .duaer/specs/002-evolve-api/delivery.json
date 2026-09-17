@@ -1,0 +1,9 @@
+{
+  "status": "accepted",
+  "feature": "002-evolve-api",
+  "verification": {
+    "commands": ["npm test", "npm run build"],
+    "result": "48 tests passed; build ok"
+  },
+  "notes": "v0.4: context, killTweensOf, getProperty, autoAlpha, timeScale, defaults; Skill synced"
+}

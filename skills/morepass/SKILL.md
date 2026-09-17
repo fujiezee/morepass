@@ -2,7 +2,8 @@
 name: morepass
 description: >-
   Animate DOM or plain objects with MorePass (GSAP-like tween API): to/from/fromTo,
-  timeline, stagger, keyframes, quickTo, ScrollTrigger, matchMedia, utils.
+  timeline, stagger, keyframes, quickTo, context, killTweensOf, getProperty,
+  autoAlpha, timeScale, ScrollTrigger, matchMedia, utils.
   Use when writing or refactoring motion code, replacing GSAP/anime.js/Motion,
   or when the user mentions MorePass, tween, scrub, pin, or scroll-linked animation.
 ---
@@ -35,6 +36,12 @@ Targets: CSS selector string, `Element`, plain object, or arrays of those.
 | Sequence / overlap | `MorePass.timeline()` |
 | Multi-step one call | `keyframes: [...]` or `"0%"/ "50%"/ "100%"` |
 | Pointer / scrub retarget | `MorePass.quickTo(el, "x")` |
+| Scoped create + cleanup | `MorePass.context(() => { ... })` then `ctx.revert()` |
+| Kill by target | `MorePass.killTweensOf(el)` / `isTweening(el)` |
+| Read current value | `MorePass.getProperty(el, "x")` |
+| Fade + hide | `autoAlpha: 0` (opacity + visibility) |
+| Speed up / slow down | `tw.timeScale(2)` |
+| Global defaults | `MorePass.defaults({ ease: "power2.out" })` |
 | Scroll-linked | `scrollTrigger: { ... }` on vars |
 | Breakpoint contexts | `MorePass.matchMedia({ query: () => ... })` |
 | Math helpers | `MorePass.utils.*` |
@@ -43,14 +50,16 @@ Targets: CSS selector string, `Element`, plain object, or arrays of those.
 
 ```ts
 {
-  // animatable: x, y, scale, scaleX, scaleY, rotation, opacity,
+  // animatable: x, y, scale, scaleX, scaleY, rotation, opacity, autoAlpha,
   // width, height, backgroundColor, color, borderRadius, …
   duration: 0.5,          // seconds (default 0.5)
   delay: 0,
   ease: "power2.out",     // see Eases below
   repeat: 0,              // -1 = infinite
+  repeatDelay: 0,
   yoyo: false,
   paused: false,          // drive with progress/seek
+  timeScale: 1,
   overwrite: "auto",      // "auto" | true | false
   stagger: 0.1,           // or { each, amount, from }
   keyframes: [/* … */],
@@ -58,10 +67,11 @@ Targets: CSS selector string, `Element`, plain object, or arrays of those.
   onStart() {},
   onUpdate() {},
   onComplete() {},
+  onRepeat() {},
 }
 ```
 
-Controls (every tween/timeline): `play pause reverse restart kill seek progress isActive` + `duration` / `time`.
+Controls (every tween/timeline): `play pause reverse restart kill seek progress timeScale isActive` + `duration` / `time`.
 
 ## Recipes
 
@@ -140,6 +150,36 @@ range.oninput = () => tw.progress(Number(range.value) / 1000)
 const setX = MorePass.quickTo(el, "x", { duration: 0.35, ease: "power3.out" })
 const setY = MorePass.quickTo(el, "y", { duration: 0.35, ease: "power3.out" })
 pad.onpointermove = (e) => { setX(e.offsetX); setY(e.offsetY) }
+```
+
+### context / killTweensOf (SPA-safe)
+
+```ts
+const ctx = MorePass.context(() => {
+  MorePass.to(".a", { x: 100, duration: 0.5 })
+  MorePass.to(".b", { opacity: 1, duration: 0.4 })
+})
+// route leave / unmount:
+ctx.revert()
+
+MorePass.killTweensOf(".a")
+MorePass.isTweening(".a") // boolean
+MorePass.getProperty(".a", "x")
+```
+
+### autoAlpha + timeScale
+
+```ts
+MorePass.to(".modal", { autoAlpha: 0, duration: 0.3 }) // hides when ~0
+const tw = MorePass.to(".box", { x: 400, duration: 1 })
+tw.timeScale(2) // twice as fast
+```
+
+### defaults
+
+```ts
+MorePass.defaults({ ease: "power2.out", duration: 0.6 })
+MorePass.defaults({}) // clear
 ```
 
 ### ScrollTrigger
@@ -228,8 +268,13 @@ Default ease: `power1.out`.
 | `gsap.utils.*` | `MorePass.utils.*` |
 | `gsap.matchMedia` | `MorePass.matchMedia` |
 | `gsap.quickTo` | `MorePass.quickTo` |
+| `gsap.context` | `MorePass.context` |
+| `gsap.killTweensOf` | `MorePass.killTweensOf` |
+| `gsap.getProperty` | `MorePass.getProperty` |
+| `gsap.defaults` | `MorePass.defaults` |
+| `autoAlpha` | `autoAlpha` |
 | `scrollTrigger: {...}` | same idea on vars |
-| `gsap.context` | manual `kill()` / matchMedia cleanup |
+| `gsap.context` cleanup | `ctx.revert()` / `kill()` |
 
 ## More
 

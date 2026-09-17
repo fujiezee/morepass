@@ -19,6 +19,11 @@ export function expandPropKeys(keys: string[]): string[] {
     } else if (key === "scaleX" || key === "scaleY") {
       out.add("scale");
     }
+    if (key === "autoAlpha") {
+      out.add("opacity");
+    } else if (key === "opacity") {
+      out.add("autoAlpha");
+    }
   }
   return [...out];
 }
