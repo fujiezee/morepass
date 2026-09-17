@@ -60,6 +60,10 @@ export type Vars = Record<string, unknown> & {
   paused?: boolean;
   /** Playback rate (also settable via `timeScale()`). */
   timeScale?: number;
+  /** Clear inline styles after complete: `"x,opacity"`, `"all"`, or `true`. */
+  clearProps?: string | boolean;
+  /** Animate element attributes (SVG / HTML). */
+  attr?: Record<string, unknown>;
   onStart?: () => void;
   onUpdate?: () => void;
   onComplete?: () => void;

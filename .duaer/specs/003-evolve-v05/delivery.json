@@ -1,0 +1,9 @@
+{
+  "status": "accepted",
+  "feature": "003-evolve-v05",
+  "verification": {
+    "commands": ["npm test", "npm run build"],
+    "result": "53 tests passed; build ok"
+  },
+  "notes": "v0.5 delayedCall clearProps attr CSS vars wrap/distribute; push develop"
+}

@@ -2,9 +2,10 @@
 name: morepass
 description: >-
   Animate DOM or plain objects with MorePass: to/from/fromTo, timeline, stagger,
-  keyframes, quickTo, context, killTweensOf, getProperty, autoAlpha, timeScale,
-  scrollTrigger, matchMedia, utils. Use when writing or refactoring motion code,
-  or when the user mentions MorePass, tween, scrub, pin, or scroll-linked animation.
+  keyframes, quickTo, context, delayedCall, killTweensOf, getProperty, autoAlpha,
+  timeScale, clearProps, attr, CSS variables, scrollTrigger, matchMedia, utils.
+  Use when writing or refactoring motion code, or when the user mentions MorePass,
+  tween, scrub, pin, or scroll-linked animation.
 ---
 
 # MorePass
@@ -37,14 +38,18 @@ Targets: CSS selector string, `Element`, plain object, or arrays of those.
 | Multi-step one call | `keyframes: [...]` or `"0%"/ "50%"/ "100%"` |
 | Pointer / scrub retarget | `MorePass.quickTo(el, "x")` |
 | Scoped create + cleanup | `MorePass.context(() => { ... })` then `ctx.revert()` |
+| Wait then run | `MorePass.delayedCall(0.4, fn)` |
 | Kill by target | `MorePass.killTweensOf(el)` / `isTweening(el)` |
 | Read current value | `MorePass.getProperty(el, "x")` |
 | Fade + hide | `autoAlpha: 0` (opacity + visibility) |
+| Clear inline styles after | `clearProps: "opacity,x"` or `"all"` |
+| SVG / HTML attributes | `attr: { r: 40, cx: 100 }` |
+| CSS variables | `"--gap": 24` |
 | Speed up / slow down | `tw.timeScale(2)` |
 | Global defaults | `MorePass.defaults({ ease: "power2.out" })` |
 | Scroll-linked | `scrollTrigger: { ... }` on vars |
 | Breakpoint contexts | `MorePass.matchMedia({ query: () => ... })` |
-| Math helpers | `MorePass.utils.*` |
+| Math helpers | `MorePass.utils.*` (incl. `wrap`, `distribute`) |
 
 ## Vars (common)
 
@@ -64,6 +69,8 @@ Targets: CSS selector string, `Element`, plain object, or arrays of those.
   stagger: 0.1,           // or { each, amount, from }
   keyframes: [/* … */],
   scrollTrigger: { /* … */ },
+  attr: { /* svg attrs */ },
+  clearProps: "opacity,x", // or "all" / true
   onStart() {},
   onUpdate() {},
   onComplete() {},
@@ -182,6 +189,20 @@ MorePass.defaults({ ease: "power2.out", duration: 0.6 })
 MorePass.defaults({}) // clear
 ```
 
+### delayedCall / clearProps / attr / CSS vars
+
+```ts
+MorePass.delayedCall(0.5, () => console.log("later"))
+
+MorePass.to(".box", {
+  x: 200, opacity: 0, duration: 0.4,
+  clearProps: "opacity,x",
+})
+
+MorePass.to("circle", { attr: { r: 40 }, duration: 0.6 })
+MorePass.to(".card", { "--lift": 12, duration: 0.4 })
+```
+
 ### scrollTrigger
 
 ```ts
@@ -225,6 +246,8 @@ MorePass.utils.mapRange(0, 100, 0, 1, v)
 MorePass.utils.interpolate(a, b, t)
 MorePass.utils.snap(5, v)           // or snap([0,10,20], v)
 MorePass.utils.random(0, 100, 1)    // or random(["a","b"])
+MorePass.utils.wrap(0, 360, angle)
+MorePass.utils.distribute({ amount: 0.6, from: "center" })
 MorePass.utils.pipe(fn1, fn2)
 ```
 
@@ -268,8 +291,10 @@ Default ease: `power1.out`.
 | Sequence | `timeline` + position tokens |
 | Retarget | `quickTo` |
 | Scope | `context` → `revert` |
-| Teardown | `kill` `killTweensOf` |
+| Delay | `delayedCall` |
+| Teardown | `kill` `killTweensOf` `clearProps` |
 | Read | `getProperty` `isTweening` |
+| Attr / CSS var | `attr:{}` / `"--token"` |
 | Scroll | `scrollTrigger` |
 | Responsive | `matchMedia` |
 | Helpers | `utils` `defaults` `ease` |

@@ -184,7 +184,15 @@ export function formatValue(num: number, unit: string): string {
 }
 
 export function cssPropName(key: string): string {
+  if (key.startsWith("--")) return key;
   return key.includes("-")
     ? key
     : key.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`);
 }
+
+export function readAttrNumber(el: Element, key: string): number {
+  const raw = el.getAttribute(key);
+  if (raw == null || raw === "") return 0;
+  const parsed = parseNumeric(raw);
+    return parsed?.num ?? (Number(raw) || 0);
+  }

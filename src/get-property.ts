@@ -25,6 +25,16 @@ export function getProperty(
     return readObjectNumber(resolved as object, "opacity");
   }
 
+  if (property.startsWith("--")) {
+    if (typeof Element !== "undefined" && resolved instanceof Element) {
+      const el = resolved as HTMLElement;
+      return (
+        el.style.getPropertyValue(property) ||
+        getComputedStyle(el).getPropertyValue(property)
+      );
+    }
+  }
+
   if (
     typeof Element !== "undefined" &&
     resolved instanceof Element &&

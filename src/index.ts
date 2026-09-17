@@ -1,6 +1,7 @@
 import { set, to, from, fromTo } from "./animate";
 import { context } from "./context";
 import { defaults } from "./defaults";
+import { delayedCall } from "./delayed-call";
 import { ease } from "./ease";
 import { getProperty } from "./get-property";
 import { isTweening, killTweensOf } from "./kill";
@@ -56,6 +57,7 @@ export const MorePass = {
   quickTo,
   context,
   defaults,
+  delayedCall,
   getProperty,
   killTweensOf,
   isTweening,
@@ -74,6 +76,7 @@ export {
   quickTo,
   context,
   defaults,
+  delayedCall,
   getProperty,
   killTweensOf,
   isTweening,

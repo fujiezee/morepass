@@ -2,7 +2,7 @@
 
 A small, modern tween library — built so **AI agents learn it in one Skill**, and humans ship motion without fighting the stack.
 
-**v0.4.0** · TypeScript · timeline · keyframes · quickTo · context · killTweensOf · getProperty · autoAlpha · timeScale · stagger · scrollTrigger · matchMedia · utils
+**v0.5.0** · TypeScript · timeline · keyframes · quickTo · context · delayedCall · clearProps · attr · CSS vars · killTweensOf · getProperty · autoAlpha · timeScale · stagger · scrollTrigger · matchMedia · utils
 
 ```bash
 npm install morepass
@@ -46,6 +46,10 @@ MorePass.timeline()
 | `keyframes` | Array or `"0%"` / `"50%"` / `"100%"` maps |
 | `quickTo` | Fast property retarget (pointer follow) |
 | `context` | Auto-collect tweens; `revert()` on unmount |
+| `delayedCall` | Run a callback after a delay |
+| `clearProps` | Strip inline styles when the tween completes |
+| `attr` | Animate SVG / HTML attributes |
+| CSS variables | Animate `"--token"` style properties |
 | `killTweensOf` / `isTweening` | Kill or query by target |
 | `getProperty` | Read current transform / style / object value |
 | `autoAlpha` | Opacity + visibility |
@@ -55,7 +59,7 @@ MorePass.timeline()
 | `stagger` | `0.1` or `{ each, amount, from }` + function values |
 | `scrollTrigger` | scrub, once, pin, toggleActions, custom scroller |
 | `matchMedia()` | responsive animation contexts |
-| `utils` | clamp, mapRange, interpolate, snap, random |
+| `utils` | clamp, mapRange, interpolate, snap, random, wrap, distribute |
 | Transforms | `x y scale rotation …` via shared transform bag |
 | Colors | hex / rgb(a) / named |
 | Overwrite | default `"auto"` |

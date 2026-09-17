@@ -18,6 +18,7 @@ import {
   getTransformBag,
   isTransformProp,
   parseNumeric,
+  readAttrNumber,
   readObjectNumber,
   readStyleNumber,
   unitFor,
@@ -52,6 +53,8 @@ const SPECIAL = new Set([
   "keyframes",
   "paused",
   "timeScale",
+  "clearProps",
+  "attr",
 ]);
 
 type ResolvedTarget = object | Element;
@@ -105,16 +108,40 @@ function buildProps(
 
   const entries = propEntries(mode === "from" ? fromVars ?? toVars : toVars);
 
-  for (const [key, endRaw] of entries) {
-    const fromRaw = fromVars ? fromVars[key] : undefined;
+  // Expand attr:{} into attribute props
+  const attrTo = (toVars.attr ?? {}) as Record<string, unknown>;
+  const attrFrom = (fromVars?.attr ?? {}) as Record<string, unknown>;
+  const attrKeys = new Set([
+    ...Object.keys(attrTo),
+    ...(mode === "from" || mode === "fromTo" ? Object.keys(attrFrom) : []),
+  ]);
+  for (const key of attrKeys) {
+    const endRaw =
+      mode === "from"
+        ? (attrFrom[key] ?? attrTo[key])
+        : (attrTo[key] ?? attrFrom[key]);
+    if (endRaw !== undefined) entries.push([`@attr:${key}`, endRaw]);
+  }
+
+  for (const [rawKey, endRaw] of entries) {
+    const isAttr = rawKey.startsWith("@attr:");
+    const key = isAttr ? rawKey.slice(6) : rawKey;
+    const fromRaw = isAttr
+      ? attrFrom[key]
+      : fromVars
+        ? fromVars[key]
+        : undefined;
     const isAutoAlpha = key === "autoAlpha";
+    const isCssVar = key.startsWith("--");
     const readKey = isAutoAlpha ? "opacity" : key;
     const kind =
-      isElement && isTransformProp(key)
-        ? "transform"
-        : isElement
-          ? "style"
-          : "object";
+      isAttr && isElement
+        ? "attr"
+        : isElement && isTransformProp(key)
+          ? "transform"
+          : isElement
+            ? "style"
+            : "object";
 
     if (kind === "transform") {
       transform = getTransformBag(target);
@@ -123,7 +150,9 @@ function buildProps(
     // Color props
     const colorCandidate =
       kind !== "transform" &&
+      kind !== "attr" &&
       !isAutoAlpha &&
+      !isCssVar &&
       (looksLikeColor(endRaw, key) ||
         (fromRaw !== undefined && looksLikeColor(fromRaw, key)));
 
@@ -196,6 +225,8 @@ function buildProps(
         if (kind === "transform") {
           endNum =
             key === "scale" || key === "scaleX" || key === "scaleY" ? 1 : 0;
+        } else if (kind === "attr") {
+          endNum = readAttrNumber(target as Element, key);
         } else {
           endNum = readStyleNumber(target as Element, readKey).num;
         }
@@ -218,6 +249,8 @@ function buildProps(
         const current = readStyleNumber(target as Element, readKey);
         startNum = current.num;
         if (!unit) unit = current.unit;
+      } else if (isElement && kind === "attr") {
+        startNum = readAttrNumber(target as Element, key);
       } else if (kind === "transform") {
         // Prefer live bag values so chained tweens start from current pose
         const bag = getTransformBag(target);
@@ -282,6 +315,13 @@ function renderTarget(runtime: TargetRuntime, ratio: number) {
       );
       continue;
     }
+    if (prop.kind === "attr" && isElement) {
+      (target as Element).setAttribute(
+        prop.key,
+        formatValue(value, prop.unit),
+      );
+      continue;
+    }
     if (prop.key === "autoAlpha") {
       (target as Record<string, unknown>).opacity = value;
       (target as Record<string, unknown>).autoAlpha = value;
@@ -308,6 +348,7 @@ class Tween implements TweenHandle {
   private readonly onUpdate?: () => void;
   private readonly onComplete?: () => void;
   private readonly onRepeat?: () => void;
+  private readonly clearProps: string | boolean | undefined;
 
   private startWall = 0;
   private pauseWall = 0;
@@ -339,6 +380,7 @@ class Tween implements TweenHandle {
     this.onUpdate = vars.onUpdate;
     this.onComplete = vars.onComplete;
     this.onRepeat = vars.onRepeat;
+    this.clearProps = vars.clearProps;
     this.register();
   }
 
@@ -620,12 +662,52 @@ class Tween implements TweenHandle {
 
   private finish() {
     this.state = "completed";
+    this.applyClearProps();
     this.releaseClaims();
     if (!this.completedCallback) {
       this.completedCallback = true;
       this.onComplete?.();
     }
     this.clearTicker();
+  }
+
+  private applyClearProps() {
+    if (this.clearProps == null || this.clearProps === false) return;
+    const all = this.clearProps === true || this.clearProps === "all";
+    for (const runtime of this.targets) {
+      if (!runtime.isElement) continue;
+      const el = runtime.target as HTMLElement;
+      const keys = all
+        ? runtime.props.map((p) => p.key)
+        : String(this.clearProps)
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean);
+
+      let clearTransform = false;
+      for (const key of keys) {
+        if (isTransformProp(key) || key === "transform") {
+          clearTransform = true;
+          continue;
+        }
+        if (key === "autoAlpha") {
+          el.style.removeProperty("opacity");
+          el.style.removeProperty("visibility");
+          continue;
+        }
+        const attrProp = runtime.props.find(
+          (p) => p.key === key && p.kind === "attr",
+        );
+        if (attrProp) {
+          el.removeAttribute(key);
+          continue;
+        }
+        el.style.removeProperty(cssPropName(key));
+      }
+      if (clearTransform) {
+        el.style.removeProperty("transform");
+      }
+    }
   }
 }
 
